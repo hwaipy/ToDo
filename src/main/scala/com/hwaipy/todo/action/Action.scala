@@ -1,35 +1,36 @@
 package com.hwaipy.todo.action
 
 import java.io.File
-import java.time.{Instant, LocalDateTime, ZoneOffset}
+import java.time.{LocalDateTime, ZoneOffset}
 import java.util.TimeZone
 
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 import scala.xml.{Node, XML}
+import scalafx.beans.property.{IntegerProperty, ObjectProperty, StringProperty}
 
 class Action(val actionSet: ActionSet, val id: Int, creationTime: LocalDateTime) {
-  var title: String = ""
-  var superAction: Option[Int] = None
-  var lastModified = creationTime
+  val title: StringProperty = StringProperty("")
+  val superAction: IntegerProperty = IntegerProperty(0)
+  var lastModified: ObjectProperty[LocalDateTime] = ObjectProperty(creationTime)
 
   def doModify(key: String, value: String, timeStamp: LocalDateTime = LocalDateTime.now) = {
-    val lastLastModified = lastModified
-    lastModified = timeStamp
+    val lastLastModified = lastModified()
+    lastModified() = timeStamp
     val oldValue = key match {
       case "title" => {
-        val oldTitle = title
-        title = value
+        val oldTitle = title()
+        title() = value
         oldTitle
       }
       case "superAction" => {
-        val oldSuperAction = superAction match {
-          case Some(x) => x.toString
-          case None => "None"
+        val oldSuperAction = superAction() match {
+          case 0 => "None"
+          case x => x.toString
         }
-        superAction = value match {
-          case "None" => None
-          case s => Some(s.toInt)
+        superAction() = value match {
+          case "None" => 0
+          case s => s.toInt
         }
         oldSuperAction
       }
@@ -39,7 +40,7 @@ class Action(val actionSet: ActionSet, val id: Int, creationTime: LocalDateTime)
   }
 
   def doReverse(key: String, oldValue: String, oldTimeStamp: LocalDateTime = LocalDateTime.now) = {
-    lastModified = oldTimeStamp
+    lastModified() = oldTimeStamp
   }
 
   override def toString: String = s"Action[$title]"
@@ -77,6 +78,7 @@ object Action {
 class ActionSet {
   val actionMap = mutable.HashMap[Int, Action]()
   var events = new ListBuffer[Event]()
+  val ultimateAction = doCreateAction(0)
 
   def doPerformEvent(event: Event) = {
     events += event
@@ -116,9 +118,13 @@ class ActionSet {
     case None => throw new IllegalArgumentException(s"Action is ${id} does not exist.")
   }
 
-  def actions = actionMap.values.toList
+  def actions = actionMap.values.filter(a => a.id != 0).toList
 
-  def rootActions = actionMap.values.filter(_.superAction == None).toList
+  def rootActions = actionMap.values.filter(a => a.id != 0).filter(_.superAction() == 0).toList
+}
+
+object ActionSet {
+  def loadFromFile(file: File) = Events.loadFromFile(file)
 }
 
 object Events {

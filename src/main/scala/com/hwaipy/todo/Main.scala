@@ -1,59 +1,55 @@
 package com.hwaipy.todo
 
+import java.io.File
+import com.hwaipy.todo.action.{Action, ActionSet}
 import scalafx.Includes._
 import scalafx.application.JFXApp
 import scalafx.application.JFXApp.PrimaryStage
 import scalafx.scene.Scene
-import scalafx.scene.control.{Button, Tab, TabPane}
+import scalafx.scene.control._
 import scalafx.scene.layout.AnchorPane
-import scalafx.scene.paint.Color._
 
 object ToDoApp extends JFXApp {
-  private val borderStyle = "" +
-    "-fx-background-color: white;" +
-    "-fx-border-color: black;" +
-    "-fx-border-width: 1;" +
-    "-fx-border-radius: 6;" +
-    "-fx-padding: 6;"
-
+  val actionSet = ActionSet.loadFromFile(new File("D:/Google Drive/ToDo.xml"))
   stage = new PrimaryStage {
     title = "ToDo"
-    width = 1280
-    height = 800
     scene = new Scene {
-      fill = LightGreen
-      content = new AnchorPane {
-        style = borderStyle
-        val mainTabPane = new TabPane {
-          id = "source-tabs"
-//          style = borderStyle
-          tabs = Seq(
-            new Tab() {
-              text = "Demo"
-              closable = false
-              content = new AnchorPane {
-                children = Seq(new Button("123"))
-              }
-            },
-            new Tab() {
-              text = "Source"
-              closable = false
-              content = new AnchorPane {
-                children = Seq(new Button("456"))
-              }
-            }
-          )
+      root = new AnchorPane {
+        prefWidth = 1280
+        prefHeight = 800
+        val mainSplitPane = new SplitPane {
+          items += new Button("123")
+          items += createProjectView
+          items += new Button("789")
+          items += new Button("000")
         }
-        //        AnchorPane.setTopAnchor(mainTabPane, 0.0)
-        //        AnchorPane.setLeftAnchor(mainTabPane, 0.0)
-        //        AnchorPane.setBottomAnchor(mainTabPane, 0.0)
-        //        AnchorPane.setRightAnchor(mainTabPane, 0.0)
+        AnchorPane.setTopAnchor(mainSplitPane, 0.0)
+        AnchorPane.setLeftAnchor(mainSplitPane, 0.0)
+        AnchorPane.setBottomAnchor(mainSplitPane, 0.0)
+        AnchorPane.setRightAnchor(mainSplitPane, 0.0)
+        children = Seq(mainSplitPane)
+      }
+    }
+  }
 
-        //        AnchorPane.setTopAnchor(mainTabPane, 0.0)
-        //        AnchorPane.setLeftAnchor(mainTabPane, 0.0)
-        //        AnchorPane.setBottomAnchor(mainTabPane, 0.0)
-        //        AnchorPane.setRightAnchor(mainTabPane, 0.0)
-        children = Seq(mainTabPane)
+  private def createProjectView = new ScrollPane {
+    content = new AnchorPane {
+      val projectTreeTable = new TreeTableView[Action] {
+        editable = true
+        val projectTitleColumn = new TreeTableColumn[Action, String]("Project")
+        val projectNotifyColumn = new TreeTableColumn[Action, String]("Notify")
+        columns ++= Seq(projectNotifyColumn, projectNotifyColumn)
+
+        
+
+//        // Root Item
+//        TreeItem < Employee > itemRoot = new TreeItem < Employee > (empBoss);
+//        TreeItem < Employee > itemSmith = new TreeItem < Employee > (empSmith);
+//        TreeItem < Employee > itemMcNeil = new TreeItem < Employee > (empMcNeil);
+//
+//        itemRoot.getChildren().addAll(itemSmith, itemMcNeil);
+//        treeTableView.setRoot(itemRoot);
+
       }
     }
   }
