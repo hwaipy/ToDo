@@ -10,9 +10,9 @@ import scala.xml.{Node, XML}
 import scalafx.beans.property.{IntegerProperty, ObjectProperty, StringProperty}
 
 class Action(val actionSet: ActionSet, val id: Int, creationTime: LocalDateTime) {
-  val title: StringProperty = StringProperty("")
-  val superAction: IntegerProperty = IntegerProperty(0)
-  var lastModified: ObjectProperty[LocalDateTime] = ObjectProperty(creationTime)
+  val title = StringProperty("")
+  val superAction = ObjectProperty[Action](null)
+  var lastModified = ObjectProperty(creationTime)
 
   def doModify(key: String, value: String, timeStamp: LocalDateTime = LocalDateTime.now) = {
     val lastLastModified = lastModified()
@@ -25,12 +25,12 @@ class Action(val actionSet: ActionSet, val id: Int, creationTime: LocalDateTime)
       }
       case "superAction" => {
         val oldSuperAction = superAction() match {
-          case 0 => "None"
+          case x if x == actionSet.ultimateAction => "None"
           case x => x.toString
         }
         superAction() = value match {
-          case "None" => 0
-          case s => s.toInt
+          case "None" => actionSet.ultimateAction
+          //          case s => s.toInt
         }
         oldSuperAction
       }
@@ -88,7 +88,11 @@ class ActionSet {
   def doCreateAction(id: Int, timeStamp: LocalDateTime = LocalDateTime.now) = {
     actionMap.contains(id) match {
       case true => throw new IllegalArgumentException(s"Action id ${id} exists.")
-      case false => actionMap.put(id, new Action(this, id, timeStamp))
+      case false => {
+        val action = new Action(this, id, timeStamp)
+        actionMap.put(id, action)
+a
+      }
     }
   }
 

@@ -1,16 +1,19 @@
 package com.hwaipy.todo
 
 import java.io.File
+
 import com.hwaipy.todo.action.{Action, ActionSet}
+
 import scalafx.Includes._
 import scalafx.application.JFXApp
 import scalafx.application.JFXApp.PrimaryStage
+import scalafx.beans.value.ObservableValue
 import scalafx.scene.Scene
 import scalafx.scene.control._
 import scalafx.scene.layout.AnchorPane
 
 object ToDoApp extends JFXApp {
-  val actionSet = ActionSet.loadFromFile(new File("D:/Google Drive/ToDo.xml"))
+  val actionSet = ActionSet.loadFromFile(new File("../../Google Drive/ToDo.xml"))
   stage = new PrimaryStage {
     title = "ToDo"
     scene = new Scene {
@@ -36,21 +39,25 @@ object ToDoApp extends JFXApp {
     content = new AnchorPane {
       val projectTreeTable = new TreeTableView[Action] {
         editable = true
-        val projectTitleColumn = new TreeTableColumn[Action, String]("Project")
-        val projectNotifyColumn = new TreeTableColumn[Action, String]("Notify")
-        columns ++= Seq(projectNotifyColumn, projectNotifyColumn)
-
-        
-
-//        // Root Item
-//        TreeItem < Employee > itemRoot = new TreeItem < Employee > (empBoss);
-//        TreeItem < Employee > itemSmith = new TreeItem < Employee > (empSmith);
-//        TreeItem < Employee > itemMcNeil = new TreeItem < Employee > (empMcNeil);
-//
-//        itemRoot.getChildren().addAll(itemSmith, itemMcNeil);
-//        treeTableView.setRoot(itemRoot);
-
+        val projectTitleColumn = new TreeTableColumn[Action, String] {
+          text = "Project"
+          cellValueFactory = _.value.getValue.title
+        }
+        val projectNotifyColumn = new TreeTableColumn[Action, String] {
+          text = "Notify"
+          cellValueFactory = _.value.getValue.title
+        }
+        columns ++= Seq(projectTitleColumn, projectNotifyColumn)
+        val rootItem = new TreeItem(actionSet.getAction(1))
+        rootItem.getChildren.addAll(new TreeItem(actionSet.getAction(2)), new TreeItem(actionSet.getAction(3)))
+        root() = rootItem
+        showRoot = false
       }
+      AnchorPane.setTopAnchor(projectTreeTable, 0.0)
+      AnchorPane.setLeftAnchor(projectTreeTable, 0.0)
+      AnchorPane.setBottomAnchor(projectTreeTable, 0.0)
+      AnchorPane.setRightAnchor(projectTreeTable, 0.0)
+      children = Seq(projectTreeTable)
     }
   }
 }
