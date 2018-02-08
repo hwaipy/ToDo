@@ -9,9 +9,12 @@ import scala.collection.mutable.ListBuffer
 import scala.xml.{Node, XML}
 import scalafx.beans.property.{IntegerProperty, ObjectProperty, StringProperty}
 
-class Action(val actionSet: ActionSet, val id: Int, creationTime: LocalDateTime) {
+class Action(val actionSet: ActionSet, val id: Int, creationTime: LocalDateTime, ultimate: Boolean = false) {
   val title = StringProperty("")
-  val superAction = ObjectProperty[Action](null)
+  val superAction = ultimate match {
+    case true => ObjectProperty[Action](null, "Init")
+    case false => ObjectProperty[Action](actionSet.ultimateAction)
+  }
   var lastModified = ObjectProperty(creationTime)
 
   def doModify(key: String, value: String, timeStamp: LocalDateTime = LocalDateTime.now) = {
@@ -26,11 +29,12 @@ class Action(val actionSet: ActionSet, val id: Int, creationTime: LocalDateTime)
       case "superAction" => {
         val oldSuperAction = superAction() match {
           case x if x == actionSet.ultimateAction => "None"
-          case x => x.toString
+          case x if x == null => "None"
+          case x => x.id.toString
         }
         superAction() = value match {
           case "None" => actionSet.ultimateAction
-          //          case s => s.toInt
+          case s => actionSet.getAction(s.toInt)
         }
         oldSuperAction
       }
@@ -89,9 +93,12 @@ class ActionSet {
     actionMap.contains(id) match {
       case true => throw new IllegalArgumentException(s"Action id ${id} exists.")
       case false => {
-        val action = new Action(this, id, timeStamp)
+        val action = id match {
+          case 0 => new Action(this, id, timeStamp, true)
+          case _ => new Action(this, id, timeStamp)
+        }
         actionMap.put(id, action)
-a
+        action
       }
     }
   }
@@ -124,7 +131,7 @@ a
 
   def actions = actionMap.values.filter(a => a.id != 0).toList
 
-  def rootActions = actionMap.values.filter(a => a.id != 0).filter(_.superAction() == 0).toList
+  def rootActions = actionMap.values.filter(a => a.id != 0).filter(a => a.superAction() == a.actionSet.ultimateAction).toList
 }
 
 object ActionSet {
