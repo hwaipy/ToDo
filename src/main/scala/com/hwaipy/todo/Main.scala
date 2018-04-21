@@ -14,6 +14,7 @@ import scalafx.scene.layout.AnchorPane
 
 object ToDoApp extends JFXApp {
   val actionSet = ActionSet.loadFromFile(new File("../../Google Drive/ToDo.xml"))
+  println(actionSet.rootActions(3))
   stage = new PrimaryStage {
     title = "ToDo"
     scene = new Scene {
@@ -48,7 +49,7 @@ object ToDoApp extends JFXApp {
           cellValueFactory = _.value.getValue.title
         }
         columns ++= Seq(projectTitleColumn, projectNotifyColumn)
-        val rootItem = new TreeItem(actionSet.getAction(1))
+        val rootItem = new TreeItem(actionSet.ultimateAction)
         rootItem.getChildren.addAll(new TreeItem(actionSet.getAction(2)), new TreeItem(actionSet.getAction(3)))
         root() = rootItem
         showRoot = false

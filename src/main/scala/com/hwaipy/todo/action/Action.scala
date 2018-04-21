@@ -56,7 +56,7 @@ object Action {
       actionSet.doCreateAction(eventTargetID, timeStamp)
     }
 
-    def reverse(actionSet: ActionSet): Unit = actionSet.doRemoteAction(eventTargetID)
+    def reverse(actionSet: ActionSet): Unit = actionSet.doRemoveAction(eventTargetID)
   }
 
   def modifyEvent(eventTargetID: Int, key: String, value: String, timeStamp: LocalDateTime = LocalDateTime.now) = new Event {
@@ -117,7 +117,7 @@ class ActionSet {
     actionMap(id)
   }
 
-  def doRemoteAction(id: Int) = {
+  def doRemoveAction(id: Int) = {
     actionMap.contains(id) match {
       case true => actionMap.remove(id)
       case false => throw new IllegalArgumentException(s"Action id ${id} does not exist.")
