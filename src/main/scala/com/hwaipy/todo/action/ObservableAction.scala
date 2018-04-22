@@ -1,74 +1,55 @@
-//package com.hwaipy.todo
-//
-//import java.io.File
-//import java.time.LocalDateTime
-//
-//import com.hwaipy.todo.action.{Action, AtomicEvent, Event, Events}
-//
-//import scala.collection.mutable
-//import scala.collection.mutable.ListBuffer
-//
-//object ObservableAction {
-//  def loadFromFile(file: File) = {
-//    val events = Events.loadFromFile(file)
-//  }
-//
-//
-//}
-//
-//
-//
-////class ActionSet {
-////  val actionMap = mutable.HashMap[Int, Action]()
-////  var events = new ListBuffer[Event]()
-////  val ultimateAction = doCreateAction(0)
-////
-////  def doPerformEvent(event: Event) = {
-////    events += event
-////    event.perform(this)
-////  }
-////
-////  def doCreateAction(id: Int, timeStamp: LocalDateTime = LocalDateTime.now) = {
-////    actionMap.contains(id) match {
-////      case true => throw new IllegalArgumentException(s"Action id ${id} exists.")
-////      case false => {
-////        val action = id match {
-////          case 0 => new Action(this, id, timeStamp, true)
-////          case _ => new Action(this, id, timeStamp)
-////        }
-////        actionMap.put(id, action)
-////        action
-////      }
-////    }
-////  }
-////
-////  def eventCreateAction(title: String = "", superAction: Option[Int] = None) = {
-////    val id = actionMap.keys match {
-////      case keys if keys.isEmpty => 0
-////      case keys => keys.max + 1
-////    }
-////    val events = new ListBuffer[Event]
-////    events += Action.createEvent(id, LocalDateTime.now)
-////    events += Action.modifyEvent(id, "title", title, LocalDateTime.now)
-////    if (superAction != None) events += Action.modifyEvent(id, "superAction", superAction.get.toString, LocalDateTime.now)
-////    val event = new AtomicEvent(events)
-////    doPerformEvent(event)
-////    actionMap(id)
-////  }
-////
-////  def doRemoveAction(id: Int) = {
-////    actionMap.contains(id) match {
-////      case true => actionMap.remove(id)
-////      case false => throw new IllegalArgumentException(s"Action id ${id} does not exist.")
-////    }
-////  }
-////
-////  def getAction(id: Int) = actionMap.get(id) match {
-////    case Some(x) => x
-////    case None => throw new IllegalArgumentException(s"Action is ${id} does not exist.")
-////  }
-////
-////  def actions = actionMap.values.filter(a => a.id != 0).toList
-////
-////  def rootActions = actionMap.values.filter(a => a.id != 0).filter(a => a.superAction() == a.actionSet.ultimateAction).toList
-////}
+package com.hwaipy.todo
+
+import java.beans.{PropertyChangeEvent, PropertyChangeListener}
+
+import com.hwaipy.todo.action.{Action, ActionSet}
+
+import scala.collection.mutable
+import scalafx.beans.property.{BooleanProperty, ObjectProperty, StringProperty}
+import scalafx.scene.control.TreeItem
+
+
+class ObservableAction(val action: Action) {
+  private val listener = new PropertyChangeListener {
+    override def propertyChange(evt: PropertyChangeEvent) {
+
+    }
+  }
+  action.addPropertyChangeListener(listener)
+
+  val title = StringProperty(action.getTitle)
+  val lastModified = ObjectProperty(action.getLastModified)
+  val begin = ObjectProperty(action.getBegin)
+  val due = ObjectProperty(action.getDue)
+  val context = ObjectProperty(action.getContext)
+  val priority = ObjectProperty(action.getPriority)
+  val isProject = BooleanProperty(action.getIsProject)
+}
+
+object ObservableAction {
+  def projectItems(actionSet: ActionSet) = {
+    val itemMap = new mutable.HashMap[Int, TreeItem[ObservableAction]]()
+    itemMap.put(0, new TreeItem[ObservableAction](new ObservableAction(actionSet.ultimateAction)))
+    actionSet.actions.filter(_.id > 0).filter(_.getIsProject).foreach(action => itemMap.put(action.id, new TreeItem[ObservableAction](new ObservableAction(action))))
+    itemMap.values.filter(_.value().action.id > 0).foreach(item => {
+      val superID = item.value().action.getSuperActionId
+      val superItem = itemMap(superID)
+      superItem.getChildren.addAll(item)
+    })
+    actionSet.addHierarchyChangeListener((id: Int, oldSuperAction: Int, newSuperAction: Int) => {
+      val item = itemMap.get(id) match {
+        case Some(i) => i
+        case None => {
+          val i = new TreeItem[ObservableAction](new ObservableAction(actionSet.getAction(id)))
+          itemMap.put(id, i)
+          i
+        }
+      }
+      val oldSuper = itemMap(oldSuperAction)
+      val newSuper = itemMap(newSuperAction)
+      oldSuper.getChildren.removeAll(item)
+      newSuper.getChildren.addAll(item)
+    })
+    itemMap(0)
+  }
+}
