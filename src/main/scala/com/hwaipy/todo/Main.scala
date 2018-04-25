@@ -1,6 +1,6 @@
 package com.hwaipy.todo
 
-import java.io.File
+import java.io.{File, FileOutputStream, PrintStream}
 import java.time.format.DateTimeFormatter
 import java.time.{Duration, LocalDateTime}
 import java.util.TimerTask
@@ -21,10 +21,18 @@ import scalafx.scene.Scene
 import scalafx.scene.control._
 import scalafx.scene.input.{KeyEvent, MouseEvent}
 import scalafx.scene.layout.{AnchorPane, GridPane}
+import java.nio.file.{Files, Paths, StandardCopyOption}
 
 object ToDoApp extends JFXApp {
-  val storageFile = new File("../../Google Drive/ToDo.xml")
-  //  val storageFile = new File("ToDo.xml")
+  System.setOut(new PrintStream(new FileOutputStream(s"StdOut-${LocalDateTime.now}.txt".replaceAll(":", "-")), true))
+  System.setErr(new PrintStream(new FileOutputStream(s"StdErr-${LocalDateTime.now}.txt".replaceAll(":", "-")), true))
+
+  val storageFile = new File("ToDo.xml")
+
+  //  Files.copy(storageFile.toPath, new File(storageFile.getAbsolutePath.reverse.replaceFirst("lmx.", s"lmx.${LocalDateTime.now.toString.replaceAll(":", "-").reverse}")).toPath, StandardCopyOption.COPY_ATTRIBUTES)
+  println(storageFile.getAbsolutePath.reverse.replaceFirst("lmx.", s"lmx.${LocalDateTime.now.toString.replaceAll(":", "-").reverse}").reverse)
+  Files.copy(storageFile.toPath, new File(storageFile.getAbsolutePath.reverse.replaceFirst("lmx.", s"lmx.${LocalDateTime.now.toString.replaceAll(":", "-").reverse}").reverse).toPath, StandardCopyOption.COPY_ATTRIBUTES, StandardCopyOption.REPLACE_EXISTING)
+
   val actionSet = ActionSet.loadFromFile(storageFile)
   stage = new PrimaryStage {
     title = "ToDo"

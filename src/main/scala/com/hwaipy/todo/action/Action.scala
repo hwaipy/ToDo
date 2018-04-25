@@ -4,13 +4,10 @@ import java.beans.{PropertyChangeEvent, PropertyChangeListener}
 import java.io.{File, PrintWriter}
 import java.time.{Duration, LocalDateTime, ZoneOffset}
 import java.util.{EventListener, TimeZone, TimerTask}
-
 import com.hwaipy.todo.ToDoApp.{actionSet, storageFile}
-
 import scala.collection.mutable
 import scala.collection.mutable.{ArrayBuffer, ListBuffer}
 import scala.xml.{Node, XML}
-
 class Action(val actionSet: ActionSet, val id: Int, creationTime: LocalDateTime) {
   private var title = ""
   private var superAction = 0
