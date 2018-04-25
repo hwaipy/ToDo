@@ -8,6 +8,7 @@ import com.hwaipy.todo.ToDoApp.{actionSet, storageFile}
 import scala.collection.mutable
 import scala.collection.mutable.{ArrayBuffer, ListBuffer}
 import scala.xml.{Node, XML}
+
 class Action(val actionSet: ActionSet, val id: Int, creationTime: LocalDateTime) {
   private var title = ""
   private var superAction = 0
@@ -110,7 +111,7 @@ class Action(val actionSet: ActionSet, val id: Int, creationTime: LocalDateTime)
     children.foreach(c => c.updateDueCounts)
     var newDueCount = children.map(c => c.dueCount).sum
     var newAlmostDueCount = children.map(c => c.almostDueCount).sum
-    if (!isProject && (due != Events.INVALID_TIME_STAMP)) {
+    if (!isProject && (due != Events.INVALID_TIME_STAMP && !isDone)) {
       val now = LocalDateTime.now
       val delta = Duration.between(now, due).getSeconds
       if (delta < 0) newDueCount += 1

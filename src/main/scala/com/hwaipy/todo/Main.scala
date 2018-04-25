@@ -7,10 +7,8 @@ import java.util.TimerTask
 import java.util.regex.Pattern
 import javafx.beans.value.{ChangeListener, ObservableValue}
 import javafx.scene.control
-
 import scala.language.reflectiveCalls
 import com.hwaipy.todo.action.{Action, ActionSet, Events}
-
 import scalafx.Includes._
 import scalafx.application.{JFXApp, Platform}
 import scalafx.application.JFXApp.PrimaryStage
@@ -21,16 +19,14 @@ import scalafx.scene.Scene
 import scalafx.scene.control._
 import scalafx.scene.input.{KeyEvent, MouseEvent}
 import scalafx.scene.layout.{AnchorPane, GridPane}
-import java.nio.file.{Files, Paths, StandardCopyOption}
+import java.nio.file.{Files, StandardCopyOption}
 
 object ToDoApp extends JFXApp {
-  System.setOut(new PrintStream(new FileOutputStream(s"StdOut-${LocalDateTime.now}.txt".replaceAll(":", "-")), true))
-  System.setErr(new PrintStream(new FileOutputStream(s"StdErr-${LocalDateTime.now}.txt".replaceAll(":", "-")), true))
+    System.setOut(new PrintStream(new FileOutputStream(s"StdOut-${LocalDateTime.now}.txt".replaceAll(":", "-")), true))
+    System.setErr(new PrintStream(new FileOutputStream(s"StdErr-${LocalDateTime.now}.txt".replaceAll(":", "-")), true))
 
   val storageFile = new File("ToDo.xml")
 
-  //  Files.copy(storageFile.toPath, new File(storageFile.getAbsolutePath.reverse.replaceFirst("lmx.", s"lmx.${LocalDateTime.now.toString.replaceAll(":", "-").reverse}")).toPath, StandardCopyOption.COPY_ATTRIBUTES)
-  println(storageFile.getAbsolutePath.reverse.replaceFirst("lmx.", s"lmx.${LocalDateTime.now.toString.replaceAll(":", "-").reverse}").reverse)
   Files.copy(storageFile.toPath, new File(storageFile.getAbsolutePath.reverse.replaceFirst("lmx.", s"lmx.${LocalDateTime.now.toString.replaceAll(":", "-").reverse}").reverse).toPath, StandardCopyOption.COPY_ATTRIBUTES, StandardCopyOption.REPLACE_EXISTING)
 
   val actionSet = ActionSet.loadFromFile(storageFile)
@@ -44,8 +40,9 @@ object ToDoApp extends JFXApp {
           items += new Button("123")
           items += projectView
           items += actionView
-          items += new Button("000")
+          items += tempView
         }
+        mainSplitPane.setDividerPositions(0.1, 0.3, 0.9)
         AnchorPane.setTopAnchor(mainSplitPane, 0.0)
         AnchorPane.setLeftAnchor(mainSplitPane, 0.0)
         AnchorPane.setBottomAnchor(mainSplitPane, 0.0)
@@ -56,7 +53,7 @@ object ToDoApp extends JFXApp {
   }
 
   lazy val projectView = new ScrollPane {
-    content = new AnchorPane {
+    private val aPane = new AnchorPane {
       val projectTreeTable = new TreeTableView[ObservableAction] {
         editable = true
         prefWidth = 300
@@ -143,11 +140,18 @@ object ToDoApp extends JFXApp {
         }
       })
     }
+    content = aPane
     var onProjectSelectionChange = (id: Int) => {}
+
+    def selectProject(projectID: Int) = {
+      val actionView = aPane.projectTreeTable.actionView
+      val treeItem = actionView.getTreeItem(projectID)
+      aPane.projectTreeTable.getSelectionModel.select(treeItem)
+    }
   }
 
   lazy val actionView = new ScrollPane {
-    content = new AnchorPane {
+    val aPane = new AnchorPane {
       val actionTreeTable = new TreeTableView[ObservableAction] {
         editable = true
         prefWidth = 960
@@ -288,7 +292,42 @@ object ToDoApp extends JFXApp {
           actionTreeTable.refresh()
         }
       }, 30000, 30000)
+    }
+    content = aPane
 
+    def selectAction(actionID: Int) = {
+      val view = aPane.actionView
+      val treeItem = view.getTreeItem(actionID)
+      aPane.actionTreeTable.getSelectionModel.select(treeItem)
+    }
+  }
+
+  lazy val tempView = new ScrollPane {
+    content = new AnchorPane {
+      val nextButton = new Button("Next") {
+        onAction = () => {
+          val availableActions = actionSet.actions.filter(action => (!action.getIsProject) && (!action.getIsDone) && (action.getDue != Events.INVALID_TIME_STAMP))
+          val now = LocalDateTime.now
+          val dueImmediateActions = availableActions.filter(action => action.getPriority == "Immediate" && action.getDue.isBefore(now))
+          val dueNormalActions = availableActions.filter(action => action.getPriority == "Normal" && action.getDue.isBefore(now))
+          val dueOpportunityActions = availableActions.filter(action => action.getPriority == "Opportunity" && action.getDue.isBefore(now))
+          val almostDueImmediateActions = availableActions.filter(action => action.getPriority == "Immediate" && action.getDue.isAfter(now) && action.getDue.isBefore(now.plusHours(24)))
+          val almostDueNormalActions = availableActions.filter(action => action.getPriority == "Normal" && action.getDue.isAfter(now) && action.getDue.isBefore(now.plusHours(24)))
+          val almostDueOpportunityActions = availableActions.filter(action => action.getPriority == "Opportunity" && action.getDue.isAfter(now) && action.getDue.isBefore(now.plusHours(24)))
+          val futureImmediateActions = availableActions.filter(action => action.getPriority == "Immediate" && action.getDue.isAfter(now.plusHours(24)))
+          val futureNormalActions = availableActions.filter(action => action.getPriority == "Normal" && action.getDue.isAfter(now.plusHours(24)))
+          val futureOpportunityActions = availableActions.filter(action => action.getPriority == "Opportunity" && action.getDue.isAfter(now.plusHours(24)))
+          val list = dueImmediateActions ::: dueNormalActions ::: almostDueImmediateActions ::: almostDueNormalActions ::: dueOpportunityActions ::: almostDueOpportunityActions ::: futureImmediateActions ::: futureNormalActions ::: futureOpportunityActions
+          list.headOption foreach (action => {
+            val projectID = action.projectID
+            projectView.selectProject(projectID)
+            actionView.selectAction(action.id)
+          })
+        }
+      }
+      AnchorPane.setBottomAnchor(nextButton, 0.0)
+      AnchorPane.setRightAnchor(nextButton, 0.0)
+      children = Seq(nextButton)
     }
   }
 
