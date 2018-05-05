@@ -4,15 +4,17 @@ import java.io.{File, FileOutputStream, PrintStream}
 import java.time.format.DateTimeFormatter
 import java.time.{Duration, LocalDateTime}
 import java.util.TimerTask
-import java.util.regex.Pattern
 import javafx.beans.value.{ChangeListener, ObservableValue}
 import javafx.scene.control
+
 import scala.language.reflectiveCalls
 import com.hwaipy.todo.action.{Action, ActionSet, Events}
+import com.hwaipy.todo.input.Input
+
 import scalafx.Includes._
 import scalafx.application.{JFXApp, Platform}
 import scalafx.application.JFXApp.PrimaryStage
-import scalafx.beans.property.IntegerProperty
+import scalafx.beans.property.{IntegerProperty, StringProperty}
 import scalafx.collections.ObservableBuffer
 import scalafx.geometry.Insets
 import scalafx.scene.Scene
@@ -22,26 +24,28 @@ import scalafx.scene.layout.{AnchorPane, GridPane}
 import java.nio.file.{Files, StandardCopyOption}
 
 object ToDoApp extends JFXApp {
-    System.setOut(new PrintStream(new FileOutputStream(s"StdOut-${LocalDateTime.now}.txt".replaceAll(":", "-")), true))
-    System.setErr(new PrintStream(new FileOutputStream(s"StdErr-${LocalDateTime.now}.txt".replaceAll(":", "-")), true))
-
+  val DEBUG = true
   val storageFile = new File("ToDo.xml")
 
-  Files.copy(storageFile.toPath, new File(storageFile.getAbsolutePath.reverse.replaceFirst("lmx.", s"lmx.${LocalDateTime.now.toString.replaceAll(":", "-").reverse}").reverse).toPath, StandardCopyOption.COPY_ATTRIBUTES, StandardCopyOption.REPLACE_EXISTING)
+  if (!DEBUG) {
+    System.setOut(new PrintStream(new FileOutputStream(s"StdOut-${LocalDateTime.now}.txt".replaceAll(":", "-")), true))
+    System.setErr(new PrintStream(new FileOutputStream(s"StdErr-${LocalDateTime.now}.txt".replaceAll(":", "-")), true))
+    Files.copy(storageFile.toPath, new File(storageFile.getAbsolutePath.reverse.replaceFirst("lmx.", s"lmx.${LocalDateTime.now.toString.replaceAll(":", "-").reverse}").reverse).toPath, StandardCopyOption.COPY_ATTRIBUTES, StandardCopyOption.REPLACE_EXISTING)
+  }
 
   val actionSet = ActionSet.loadFromFile(storageFile)
+  val mainSplitPane = new SplitPane {
+    items += featureView
+    items += projectView
+    items += actionView
+    items += tempView
+  }
   stage = new PrimaryStage {
     title = "ToDo"
     scene = new Scene {
       root = new AnchorPane {
         prefWidth = 1680
         prefHeight = 800
-        val mainSplitPane = new SplitPane {
-          items += new Button("123")
-          items += projectView
-          items += actionView
-          items += tempView
-        }
         mainSplitPane.setDividerPositions(0.1, 0.3, 0.9)
         AnchorPane.setTopAnchor(mainSplitPane, 0.0)
         AnchorPane.setLeftAnchor(mainSplitPane, 0.0)
@@ -83,6 +87,7 @@ object ToDoApp extends JFXApp {
         val rootItem = actionView.getTreeItem(0)
         root() = rootItem
         showRoot = false
+        expandNode(root())
       }
       AnchorPane.setTopAnchor(projectTreeTable, 0.0)
       AnchorPane.setLeftAnchor(projectTreeTable, 0.0)
@@ -94,12 +99,12 @@ object ToDoApp extends JFXApp {
           projectTreeTable.getSelectionModel.getSelectedItem match {
             case null => {
               showActionInformationDialog(new ActionInfo("", "", "", "None", "Normal", true)).foreach(info => {
-                actionSet.eventCreateAction(info.title, stringToDateTime(info.begin), stringToDateTime(info.due), info.context, info.priority, info.isProject, 0)
+                actionSet.eventCreateAction(info.title, Input.stringToDateTime(info.begin), Input.stringToDateTime(info.due), info.context, info.priority, info.isProject, 0)
               })
             }
             case oa => {
               showActionInformationDialog(new ActionInfo("", "", "", "None", "Normal", true)).foreach(info => {
-                actionSet.eventCreateAction(info.title, stringToDateTime(info.begin), stringToDateTime(info.due), info.context, info.priority, info.isProject, oa.value().action.id)
+                actionSet.eventCreateAction(info.title, Input.stringToDateTime(info.begin), Input.stringToDateTime(info.due), info.context, info.priority, info.isProject, oa.value().action.id)
               })
             }
           }
@@ -125,7 +130,7 @@ object ToDoApp extends JFXApp {
           case item => {
             val action = item.getValue.action
             showActionInformationDialog(new ActionInfo(action.getTitle, dateTimeToEditableString(action.getBegin), dateTimeToEditableString(action.getDue), action.getContext, action.getPriority, true)).foreach(info => {
-              actionSet.eventModifyAction(action.id, info.title, stringToDateTime(info.begin), stringToDateTime(info.due), info.context, info.priority, action.getIsDone, action.getSuperActionId)
+              actionSet.eventModifyAction(action.id, info.title, Input.stringToDateTime(info.begin), Input.stringToDateTime(info.due), info.context, info.priority, action.getIsDone, action.getSuperActionId)
             })
           }
         }
@@ -201,12 +206,12 @@ object ToDoApp extends JFXApp {
           actionTreeTable.getSelectionModel.getSelectedItem match {
             case null => {
               showActionInformationDialog(new ActionInfo("", "", "", "None", "Normal", false)).foreach(info => {
-                actionSet.eventCreateAction(info.title, stringToDateTime(info.begin), stringToDateTime(info.due), info.context, info.priority, info.isProject, selectedProjectIDProperty.value)
+                actionSet.eventCreateAction(info.title, Input.stringToDateTime(info.begin), Input.stringToDateTime(info.due), info.context, info.priority, info.isProject, selectedProjectIDProperty.value)
               })
             }
             case oa => {
               showActionInformationDialog(new ActionInfo("", "", "", "None", "Normal", false)).foreach(info => {
-                actionSet.eventCreateAction(info.title, stringToDateTime(info.begin), stringToDateTime(info.due), info.context, info.priority, info.isProject, oa.getValue.action.id)
+                actionSet.eventCreateAction(info.title, Input.stringToDateTime(info.begin), Input.stringToDateTime(info.due), info.context, info.priority, info.isProject, oa.getValue.action.id)
               })
             }
           }
@@ -244,7 +249,7 @@ object ToDoApp extends JFXApp {
           case item => {
             val action = item.getValue.action
             showActionInformationDialog(new ActionInfo(action.getTitle, dateTimeToEditableString(action.getBegin), dateTimeToEditableString(action.getDue), action.getContext, action.getPriority, false)).foreach(info => {
-              actionSet.eventModifyAction(action.id, info.title, stringToDateTime(info.begin), stringToDateTime(info.due), info.context, info.priority, action.getIsDone, action.getSuperActionId)
+              actionSet.eventModifyAction(action.id, info.title, Input.stringToDateTime(info.begin), Input.stringToDateTime(info.due), info.context, info.priority, action.getIsDone, action.getSuperActionId)
             })
           }
         }
@@ -284,6 +289,7 @@ object ToDoApp extends JFXApp {
           case -1 => actionTreeTable.root() = actionView.getTreeItem(0)
           case i => actionTreeTable.root() = actionView.getTreeItem(i)
         }
+        expandNode(actionTreeTable.root())
       }
 
       val timer = new java.util.Timer(true)
@@ -302,28 +308,161 @@ object ToDoApp extends JFXApp {
     }
   }
 
-  lazy val tempView = new ScrollPane {
+  private def expandNode(item: TreeItem[ObservableAction]): Unit = {
+    if (item != null && !item.isLeaf) {
+      item.setExpanded(true)
+      item.getChildren.foreach(i => expandNode(i))
+    }
+  }
+
+  lazy val featureView: ScrollPane = new ScrollPane {
     content = new AnchorPane {
-      val nextButton = new Button("Next") {
+      prefWidth = 50
+      prefHeight = 50
+      val projectViewButton = new Button("Project") {
         onAction = () => {
-          val availableActions = actionSet.actions.filter(action => (!action.getIsProject) && (!action.getIsDone) && (action.getDue != Events.INVALID_TIME_STAMP))
-          val now = LocalDateTime.now
-          val dueImmediateActions = availableActions.filter(action => action.getPriority == "Immediate" && action.getDue.isBefore(now))
-          val dueNormalActions = availableActions.filter(action => action.getPriority == "Normal" && action.getDue.isBefore(now))
-          val dueOpportunityActions = availableActions.filter(action => action.getPriority == "Opportunity" && action.getDue.isBefore(now))
-          val almostDueImmediateActions = availableActions.filter(action => action.getPriority == "Immediate" && action.getDue.isAfter(now) && action.getDue.isBefore(now.plusHours(24)))
-          val almostDueNormalActions = availableActions.filter(action => action.getPriority == "Normal" && action.getDue.isAfter(now) && action.getDue.isBefore(now.plusHours(24)))
-          val almostDueOpportunityActions = availableActions.filter(action => action.getPriority == "Opportunity" && action.getDue.isAfter(now) && action.getDue.isBefore(now.plusHours(24)))
-          val futureImmediateActions = availableActions.filter(action => action.getPriority == "Immediate" && action.getDue.isAfter(now.plusHours(24)))
-          val futureNormalActions = availableActions.filter(action => action.getPriority == "Normal" && action.getDue.isAfter(now.plusHours(24)))
-          val futureOpportunityActions = availableActions.filter(action => action.getPriority == "Opportunity" && action.getDue.isAfter(now.plusHours(24)))
-          val list = dueImmediateActions ::: dueNormalActions ::: almostDueImmediateActions ::: almostDueNormalActions ::: dueOpportunityActions ::: almostDueOpportunityActions ::: futureImmediateActions ::: futureNormalActions ::: futureOpportunityActions
-          list.headOption foreach (action => {
+          mainSplitPane.items.set(2, actionView)
+          mainSplitPane.setDividerPositions(0.1, 0.3, 0.9)
+        }
+      }
+      val emergencyViewButton = new Button("Nexts") {
+        onAction = () => {
+          nextsView.update
+          mainSplitPane.items.set(2, nextsView)
+          mainSplitPane.setDividerPositions(0.1, 0.3, 0.9)
+        }
+      }
+      AnchorPane.setLeftAnchor(projectViewButton, 0.0)
+      AnchorPane.setTopAnchor(projectViewButton, 0.0)
+      AnchorPane.setBottomAnchor(emergencyViewButton, 0.0)
+      AnchorPane.setLeftAnchor(emergencyViewButton, 0.0)
+      children = Seq(projectViewButton, emergencyViewButton)
+    }
+  }
+
+
+  lazy val nextsView = new ScrollPane {
+    val rootObservableActionItem = new TreeItem[ObservableAction](new ObservableAction(actionSet.rootAction))
+    val aPane = new AnchorPane {
+      val actionTreeTable = new TreeTableView[ObservableAction] {
+        editable = false
+        prefWidth = 960
+        prefHeight = 800
+        val actionTitleColumn = new TreeTableColumn[ObservableAction, String] {
+          text = "Action"
+          cellValueFactory = _.value.getValue.title
+          prefWidth = 400
+        }
+        val projectTitleColumn = new TreeTableColumn[ObservableAction, String] {
+          text = "Project"
+          cellValueFactory = (a) => new StringProperty(actionSet.getAction(a.value.getValue.action.projectID).getTitle)
+          prefWidth = 100
+        }
+        val beginColumn = new TreeTableColumn[ObservableAction, LocalDateTime] {
+          text = "Begin"
+          cellValueFactory = _.value.getValue.begin
+          cellFactory = createTreeTableLocalDateTimeCellFactory
+          prefWidth = 100
+        }
+        val dueColumn = new TreeTableColumn[ObservableAction, LocalDateTime] {
+          text = "Due"
+          cellValueFactory = _.value.getValue.due
+          cellFactory = createTreeTableLocalDateTimeCellFactory
+          prefWidth = 100
+        }
+        val contextColumn = new TreeTableColumn[ObservableAction, String] {
+          text = "Context"
+          cellValueFactory = _.value.getValue.context
+          prefWidth = 100
+        }
+        val priorityColumn = new TreeTableColumn[ObservableAction, String] {
+          text = "Priority"
+          cellValueFactory = _.value.getValue.priority
+          prefWidth = 80
+        }
+        val isDoneColumn = new TreeTableColumn[ObservableAction, Boolean] {
+          text = "done"
+          cellValueFactory = _.value.getValue.isDone
+          prefWidth = 60
+        }
+        columns ++= Seq(actionTitleColumn, projectTitleColumn, beginColumn, dueColumn, contextColumn, priorityColumn, isDoneColumn)
+        showRoot = false
+        root = rootObservableActionItem
+      }
+      AnchorPane.setTopAnchor(actionTreeTable, 0.0)
+      AnchorPane.setLeftAnchor(actionTreeTable, 0.0)
+      AnchorPane.setBottomAnchor(actionTreeTable, 0.0)
+      AnchorPane.setRightAnchor(actionTreeTable, 0.0)
+
+      children = Seq(actionTreeTable)
+
+      actionTreeTable.onKeyTyped = (event: KeyEvent) => {
+        if (event.character == "\u001B") {
+          actionTreeTable.getSelectionModel.clearSelection()
+        }
+        if (event.character == "\r") openChangeDialog
+        if (event.character == " ") setActionDone
+        if (event.character == "t") targetToProjectActionView
+      }
+      actionTreeTable.onMouseClicked = (event: MouseEvent) => {
+        if (event.clickCount == 2) openChangeDialog
+      }
+
+      def openChangeDialog = {
+        actionTreeTable.getSelectionModel.getSelectedItem match {
+          case null =>
+          case item => {
+            val action = item.getValue.action
+            showActionInformationDialog(new ActionInfo(action.getTitle, dateTimeToEditableString(action.getBegin), dateTimeToEditableString(action.getDue), action.getContext, action.getPriority, false)).foreach(info => {
+              actionSet.eventModifyAction(action.id, info.title, Input.stringToDateTime(info.begin), Input.stringToDateTime(info.due), info.context, info.priority, action.getIsDone, action.getSuperActionId)
+            })
+          }
+        }
+      }
+
+      def setActionDone = {
+        actionTreeTable.getSelectionModel.getSelectedItem match {
+          case null =>
+          case item => {
+            val action = item.getValue.action
+            actionSet.eventModifyAction(action.id, action.getTitle, action.getBegin, action.getDue, action.getContext, action.getPriority, !action.getIsDone, action.getSuperActionId)
+          }
+        }
+      }
+
+      def targetToProjectActionView = {
+        actionTreeTable.getSelectionModel.getSelectedItem match {
+          case null =>
+          case item => {
+            val action = item.getValue.action
+            mainSplitPane.items.set(2, actionView)
+            mainSplitPane.setDividerPositions(0.1, 0.3, 0.9)
             val projectID = action.projectID
             projectView.selectProject(projectID)
             actionView.selectAction(action.id)
-          })
+          }
         }
+      }
+    }
+    content = aPane
+
+    def update = {
+      val nexts = actionSet.getNexts
+      rootObservableActionItem.getChildren.clear
+      nexts.foreach(n => rootObservableActionItem.getChildren.addAll(new TreeItem[ObservableAction](new ObservableAction(n))))
+    }
+  }
+
+  lazy val tempView: ScrollPane = new ScrollPane {
+    content = new AnchorPane {
+      val nextButton = new Button("Next") {
+        onAction = () => actionSet.getNexts.headOption foreach (action => {
+          mainSplitPane.items.set(2, actionView)
+          mainSplitPane.setDividerPositions(0.1, 0.3, 0.9)
+          val projectID = action.projectID
+          projectView.selectProject(projectID)
+          actionView.selectAction(action.id)
+        })
       }
       AnchorPane.setBottomAnchor(nextButton, 0.0)
       AnchorPane.setRightAnchor(nextButton, 0.0)
@@ -385,30 +524,8 @@ object ToDoApp extends JFXApp {
     }
   }
 
-  private val PATTERN_XH = Pattern.compile("([0-9]+) *h")
-  private val PATTERN_XD = Pattern.compile("([0-9]+) *d")
-  private val PATTERN_XW = Pattern.compile("([0-9]+) *w")
-  private val PATTERN_XM = Pattern.compile("([0-9]+) *m")
   private val DATETIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
   private val DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd")
-
-  def stringToDateTime(str: String): LocalDateTime = {
-    if (str == "") return Events.INVALID_TIME_STAMP
-    val matcherXH = PATTERN_XH.matcher(str)
-    if (matcherXH.find) return LocalDateTime.now.plusHours(matcherXH.group(1).toLong)
-    val matcherXD = PATTERN_XD.matcher(str)
-    if (matcherXD.find) return LocalDateTime.now.plusDays(matcherXD.group(1).toLong)
-    val matcherXW = PATTERN_XW.matcher(str)
-    if (matcherXW.find) return LocalDateTime.now.plusWeeks(matcherXW.group(1).toLong)
-    val matcherXM = PATTERN_XM.matcher(str)
-    if (matcherXM.find) return LocalDateTime.now.plusMonths(matcherXM.group(1).toLong)
-    try {
-      return LocalDateTime.parse(str, DATETIME_FORMATTER)
-    } catch {
-      case _: Throwable =>
-    }
-    return Events.INVALID_TIME_STAMP
-  }
 
   private def dateTimeToEditableString(localDateTime: LocalDateTime) =
     if (localDateTime == Events.INVALID_TIME_STAMP) ""

@@ -271,6 +271,24 @@ class ActionSet {
     def hierarchyChanged(id: Int, oldSuperAction: Int, newSuperAction: Int)
   }
 
+  def getNexts = {
+    val availableActions = actionSet.actions.filter(action => (!action.getIsProject) && (!action.getIsDone) && (action.getDue != Events.INVALID_TIME_STAMP))
+    val now = LocalDateTime.now
+    val dueImmediateActions = availableActions.filter(action => action.getPriority == "Immediate" && action.getDue.isBefore(now)).sortWith((a1, a2) => a1.getDue.isBefore(a2.getDue))
+    val dueNormalActions = availableActions.filter(action => action.getPriority == "Normal" && action.getDue.isBefore(now)).sortWith((a1, a2) => a1.getDue.isBefore(a2.getDue))
+    val dueOpportunityActions = availableActions.filter(action => action.getPriority == "Opportunity" && action.getDue.isBefore(now)).sortWith((a1, a2) => a1.getDue.isBefore(a2.getDue))
+    val almostDueImmediateActions = availableActions.filter(action => action.getPriority == "Immediate" && action.getDue.isAfter(now) && action.getDue.isBefore(now.plusHours(24))).sortWith((a1, a2) => a1.getDue.isBefore(a2.getDue))
+    val almostDueNormalActions = availableActions.filter(action => action.getPriority == "Normal" && action.getDue.isAfter(now) && action.getDue.isBefore(now.plusHours(24))).sortWith((a1, a2) => a1.getDue.isBefore(a2.getDue))
+    val almostDueOpportunityActions = availableActions.filter(action => action.getPriority == "Opportunity" && action.getDue.isAfter(now) && action.getDue.isBefore(now.plusHours(24))).sortWith((a1, a2) => a1.getDue.isBefore(a2.getDue))
+    val futureImmediateActions = availableActions.filter(action => action.getPriority == "Immediate" && action.getDue.isAfter(now.plusHours(24))).sortWith((a1, a2) => a1.getDue.isBefore(a2.getDue))
+    val futureNormalActions = availableActions.filter(action => action.getPriority == "Normal" && action.getDue.isAfter(now.plusHours(24))).sortWith((a1, a2) => a1.getDue.isBefore(a2.getDue))
+    val futureOpportunityActions = availableActions.filter(action => action.getPriority == "Opportunity" && action.getDue.isAfter(now.plusHours(24))).sortWith((a1, a2) => a1.getDue.isBefore(a2.getDue))
+    val list = dueImmediateActions ::: dueNormalActions ::: almostDueImmediateActions ::: almostDueNormalActions ::: dueOpportunityActions ::: almostDueOpportunityActions ::: futureImmediateActions ::: futureNormalActions ::: futureOpportunityActions
+    list
+  }
+
+  def getNext = getNexts.headOption
+
 }
 
 object ActionSet {
