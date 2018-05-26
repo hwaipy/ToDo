@@ -10,7 +10,7 @@ class ObservableAction(val action: Action) {
   private val listener = new PropertyChangeListener {
     override def propertyChange(evt: PropertyChangeEvent) {
       evt.getPropertyName match {
-        case "title" => title.value = action.getTitle
+        case "title" => title.value = getTitleMethodTempWithEmergency
         case "begin" => begin.value = action.getBegin
         case "due" => due.value = action.getDue
         case "context" => context.value = action.getContext
@@ -24,7 +24,7 @@ class ObservableAction(val action: Action) {
   }
   action.addPropertyChangeListener(listener)
 
-  val title = StringProperty(action.getTitle)
+  val title = StringProperty(getTitleMethodTempWithEmergency)
   val lastModified = ObjectProperty(action.getLastModified)
   val begin = ObjectProperty(action.getBegin)
   val due = ObjectProperty(action.getDue)
@@ -34,6 +34,14 @@ class ObservableAction(val action: Action) {
   val isDone = ObjectProperty(action.getIsDone)
   val dueCount = ObjectProperty(action.getDueCount)
   val almostDueCount = ObjectProperty(action.getAlmostDueCount)
+
+  def getTitleMethodTempWithEmergency = {
+    val title = action.getTitle
+    action.getPriority match {
+      case "Emergency" => "***" + title + "***"
+      case _ => title
+    }
+  }
 }
 
 class ActionView(actionSet: ActionSet) {

@@ -24,7 +24,7 @@ import scalafx.scene.layout.{AnchorPane, GridPane}
 import java.nio.file.{Files, StandardCopyOption}
 
 object ToDoApp extends JFXApp {
-  val DEBUG = true
+  val DEBUG = new File(".").getAbsolutePath.contains("GitHub")
   val storageFile = new File("ToDo.xml")
 
   if (!DEBUG) {
@@ -492,7 +492,7 @@ object ToDoApp extends JFXApp {
       items = ObservableBuffer("Lab", "Office", "Waiting", "People", "None")
     }
     val priority = new ComboBox[String] {
-      items = ObservableBuffer("Immediate", "Normal", "Opportunity")
+      items = ObservableBuffer("Emergency", "Immediate", "Normal", "Opportunity")
     }
     title.text = info.title
     begin.text = info.begin
