@@ -1,30 +1,30 @@
-package com.hwaipy.todo
+package com.hwaipy.todo.action
 
-import java.beans.{PropertyChangeEvent, PropertyChangeListener}
-import com.hwaipy.todo.action.{Action, ActionSet}
+//import java.beans.{PropertyChangeEvent, PropertyChangeListener}
+//import com.hwaipy.todo.action.{Action, ActionSet}
 import scala.collection.mutable
 import scalafx.beans.property.{ObjectProperty, StringProperty}
 import scalafx.scene.control.TreeItem
 
 class ObservableAction(val action: Action) {
-  private val listener = new PropertyChangeListener {
-    override def propertyChange(evt: PropertyChangeEvent) {
-      evt.getPropertyName match {
-        case "title" => title.value = getTitleMethodTempWithEmergency
-        case "begin" => begin.value = action.getBegin
-        case "due" => due.value = action.getDue
-        case "context" => context.value = action.getContext
-        case "priority" => priority.value = action.getPriority
-        case "isDone" => isDone.value = action.getIsDone
-        case "dueCount" => dueCount.value = action.getDueCount
-        case "almostDueCount" => almostDueCount.value = action.getAlmostDueCount
-      }
-      lastModified.value = action.getLastModified
-    }
-  }
-  action.addPropertyChangeListener(listener)
-
-  val title = StringProperty(getTitleMethodTempWithEmergency)
+  //  private val listener = new PropertyChangeListener {
+  //    override def propertyChange(evt: PropertyChangeEvent) {
+  //      evt.getPropertyName match {
+  //        case "title" => title.value = getTitleMethodTempWithEmergency
+  //        case "begin" => begin.value = action.getBegin
+  //        case "due" => due.value = action.getDue
+  //        case "context" => context.value = action.getContext
+  //        case "priority" => priority.value = action.getPriority
+  //        case "isDone" => isDone.value = action.getIsDone
+  //        case "dueCount" => dueCount.value = action.getDueCount
+  //        case "almostDueCount" => almostDueCount.value = action.getAlmostDueCount
+  //      }
+  //      lastModified.value = action.getLastModified
+  //    }
+  //  }
+  //  action.addPropertyChangeListener(listener)
+  //
+  val title = StringProperty(action.getTitle)
   val lastModified = ObjectProperty(action.getLastModified)
   val begin = ObjectProperty(action.getBegin)
   val due = ObjectProperty(action.getDue)
@@ -32,16 +32,16 @@ class ObservableAction(val action: Action) {
   val priority = StringProperty(action.getPriority)
   val isProject = ObjectProperty(action.getIsProject)
   val isDone = ObjectProperty(action.getIsDone)
-  val dueCount = ObjectProperty(action.getDueCount)
-  val almostDueCount = ObjectProperty(action.getAlmostDueCount)
-
-  def getTitleMethodTempWithEmergency = {
-    val title = action.getTitle
-    action.getPriority match {
-      case "Emergency" => "***" + title + "***"
-      case _ => title
-    }
-  }
+  //  val dueCount = ObjectProperty(action.getDueCount)
+  //  val almostDueCount = ObjectProperty(action.getAlmostDueCount)
+  //
+  //  def getTitleMethodTempWithEmergency = {
+  //    val title = action.getTitle
+  //    action.getPriority match {
+  //      case "Emergency" => "***" + title + "***"
+  //      case _ => title
+  //    }
+  //  }
 }
 
 class ActionView(actionSet: ActionSet) {
@@ -69,6 +69,7 @@ class ActionView(actionSet: ActionSet) {
     this.filter = filter
     refresh
   }
+
 
   def refresh = {
     itemMap.values.foreach(_.children.clear)

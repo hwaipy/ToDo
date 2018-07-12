@@ -4,9 +4,6 @@ import java.beans.{PropertyChangeEvent, PropertyChangeListener}
 import java.io.{File, PrintWriter}
 import java.time.{Duration, LocalDate, LocalDateTime, ZoneOffset}
 import java.util.{EventListener, TimeZone, TimerTask}
-
-import com.hwaipy.todo.ToDoApp.{actionSet, storageFile}
-
 import scala.collection.mutable
 import scala.collection.mutable.{ArrayBuffer, ListBuffer}
 import scala.xml.{Node, XML}
@@ -108,31 +105,31 @@ class Action(val actionSet: ActionSet, val id: Int, creationTime: LocalDateTime)
     oldBool.toString
   }
 
-  def updateDueCounts: Unit = {
-    val children = childrenIDs.map(id => actionSet.getAction(id))
-    children.foreach(c => c.updateDueCounts)
-    var newDueCount = children.map(c => c.dueCount).sum
-    var newAlmostDueCount = children.map(c => c.almostDueCount).sum
-    if (!isProject && (due != Events.INVALID_TIME_STAMP && !isDone)) {
-      val now = LocalDateTime.now
-      val delta = Duration.between(now, due).getSeconds
-      if (delta < 0) newDueCount += 1
-      else if (delta < 3600 * 24) newAlmostDueCount += 1
-    }
-    if (newDueCount != dueCount) {
-      val oldDueCount = dueCount
-      dueCount = newDueCount
-      firePropertyChangeEvent("dueCount", oldDueCount, newDueCount)
-      firePropertyChangeEvent("due", due, due)
-    }
-    if (newAlmostDueCount != almostDueCount) {
-      val oldAlmostDueCount = almostDueCount
-      almostDueCount = newAlmostDueCount
-      firePropertyChangeEvent("almostDueCount", oldAlmostDueCount, newAlmostDueCount)
-      firePropertyChangeEvent("due", due, due)
-    }
-  }
-
+  //  def updateDueCounts: Unit = {
+  //    val children = childrenIDs.map(id => actionSet.getAction(id))
+  //    children.foreach(c => c.updateDueCounts)
+  //    var newDueCount = children.map(c => c.dueCount).sum
+  //    var newAlmostDueCount = children.map(c => c.almostDueCount).sum
+  //    if (!isProject && (due != Events.INVALID_TIME_STAMP && !isDone)) {
+  //      val now = LocalDateTime.now
+  //      val delta = Duration.between(now, due).getSeconds
+  //      if (delta < 0) newDueCount += 1
+  //      else if (delta < 3600 * 24) newAlmostDueCount += 1
+  //    }
+  //    if (newDueCount != dueCount) {
+  //      val oldDueCount = dueCount
+  //      dueCount = newDueCount
+  //      firePropertyChangeEvent("dueCount", oldDueCount, newDueCount)
+  //      firePropertyChangeEvent("due", due, due)
+  //    }
+  //    if (newAlmostDueCount != almostDueCount) {
+  //      val oldAlmostDueCount = almostDueCount
+  //      almostDueCount = newAlmostDueCount
+  //      firePropertyChangeEvent("almostDueCount", oldAlmostDueCount, newAlmostDueCount)
+  //      firePropertyChangeEvent("due", due, due)
+  //    }
+  //  }
+  //
   def getTitle = title
 
   def getSuperActionId = superAction
@@ -151,18 +148,18 @@ class Action(val actionSet: ActionSet, val id: Int, creationTime: LocalDateTime)
 
   def getIsDone = isDone
 
-  def getDueCount = dueCount
-
-  def getAlmostDueCount = almostDueCount
-
-  override def toString: String = s"Action[$title]"
-
-  def childrenIDs = actionSet.actions.filter(a => a.superAction == id).map(_.id)
-
-  def projectID: Int = isProject match {
-    case true => id
-    case false => actionSet.getAction(superAction).projectID
-  }
+  //  def getDueCount = dueCount
+  //
+  //  def getAlmostDueCount = almostDueCount
+  //
+  //  override def toString: String = s"Action[$title]"
+  //
+  //  def childrenIDs = actionSet.actions.filter(a => a.superAction == id).map(_.id)
+  //
+  //  def projectID: Int = isProject match {
+  //    case true => id
+  //    case false => actionSet.getAction(superAction).projectID
+  //  }
 }
 
 class ActionSet {
@@ -174,7 +171,7 @@ class ActionSet {
   def performEvent(event: AtomicEvent) = {
     events += event
     event.perform(this)
-    rootAction.updateDueCounts
+    //    rootAction.updateDueCounts
   }
 
   def createAction(id: Int, timeStamp: LocalDateTime = LocalDateTime.now) = {
@@ -199,58 +196,59 @@ class ActionSet {
     }
   }
 
-  def resumeAction(action: Action) = {
-    actionMap.put(action.id, action)
-  }
+  //
+  //    def resumeAction(action: Action) = {
+  //      actionMap.put(action.id, action)
+  //    }
 
-  def eventCreateAction(title: String, begin: LocalDateTime, due: LocalDateTime, context: String, priority: String, isProject: Boolean, superAction: Int = 0) = {
-    val id = actionMap.keys match {
-      case keys if keys.isEmpty => 0
-      case keys => keys.max + 1
-    }
-    val events = new ListBuffer[Event]
-    val timeStamp = LocalDateTime.now
-    events += Events.newCreateEvent(id, timeStamp)
-    events += Events.newModifyEvent(id, "title", title, timeStamp)
-    events += Events.newModifyEvent(id, "begin", Events.timeToString(begin), timeStamp)
-    events += Events.newModifyEvent(id, "due", Events.timeToString(due), timeStamp)
-    events += Events.newModifyEvent(id, "context", context, timeStamp)
-    events += Events.newModifyEvent(id, "priority", priority, timeStamp)
-    events += Events.newModifyEvent(id, "isProject", isProject.toString, timeStamp)
-    events += Events.newModifyEvent(id, "superAction", superAction.toString, timeStamp)
-    val event = new AtomicEvent(events)
-    performEvent(event)
-    actionSet.saveToFile(storageFile)
-  }
-
-  def eventModifyAction(id: Int, title: String, begin: LocalDateTime, due: LocalDateTime, context: String, priority: String, isDone: Boolean, superAction: Int = 0) = {
-    val events = new ListBuffer[Event]
-    val timeStamp = LocalDateTime.now
-    val action = getAction(id)
-    if (title != action.getTitle) events += Events.newModifyEvent(id, "title", title, timeStamp)
-    if (begin != action.getBegin) events += Events.newModifyEvent(id, "begin", Events.timeToString(begin), timeStamp)
-    if (due != action.getDue) events += Events.newModifyEvent(id, "due", Events.timeToString(due), timeStamp)
-    if (context != action.getContext) events += Events.newModifyEvent(id, "context", context, timeStamp)
-    if (priority != action.getPriority) events += Events.newModifyEvent(id, "priority", priority, timeStamp)
-    if (isDone != action.getIsDone) events += Events.newModifyEvent(id, "isDone", isDone.toString, timeStamp)
-    if (superAction != action.getSuperActionId) events += Events.newModifyEvent(id, "superAction", superAction.toString, timeStamp)
-    val event = new AtomicEvent(events)
-    performEvent(event)
-    actionSet.saveToFile(storageFile)
-  }
-
-  def eventDeleteAction(id: Int) = {
-    val timeStamp = LocalDateTime.now
-    val action = getAction(id)
-
-    val events = new ListBuffer[Event]
-    events += Events.newDeleteEvent(id)
-    val event = new AtomicEvent(events)
-    performEvent(event)
-    actionSet.saveToFile(storageFile)
-  }
-
-  def saveToFile(file: File) = Events.saveToFile(events, file)
+  //  def eventCreateAction(title: String, begin: LocalDateTime, due: LocalDateTime, context: String, priority: String, isProject: Boolean, superAction: Int = 0) = {
+  //    val id = actionMap.keys match {
+  //      case keys if keys.isEmpty => 0
+  //      case keys => keys.max + 1
+  //    }
+  //    val events = new ListBuffer[Event]
+  //    val timeStamp = LocalDateTime.now
+  //    events += Events.newCreateEvent(id, timeStamp)
+  //    events += Events.newModifyEvent(id, "title", title, timeStamp)
+  //    events += Events.newModifyEvent(id, "begin", Events.timeToString(begin), timeStamp)
+  //    events += Events.newModifyEvent(id, "due", Events.timeToString(due), timeStamp)
+  //    events += Events.newModifyEvent(id, "context", context, timeStamp)
+  //    events += Events.newModifyEvent(id, "priority", priority, timeStamp)
+  //    events += Events.newModifyEvent(id, "isProject", isProject.toString, timeStamp)
+  //    events += Events.newModifyEvent(id, "superAction", superAction.toString, timeStamp)
+  //    val event = new AtomicEvent(events)
+  //    performEvent(event)
+  //    actionSet.saveToFile(storageFile)
+  //  }
+  //
+  //  def eventModifyAction(id: Int, title: String, begin: LocalDateTime, due: LocalDateTime, context: String, priority: String, isDone: Boolean, superAction: Int = 0) = {
+  //    val events = new ListBuffer[Event]
+  //    val timeStamp = LocalDateTime.now
+  //    val action = getAction(id)
+  //    if (title != action.getTitle) events += Events.newModifyEvent(id, "title", title, timeStamp)
+  //    if (begin != action.getBegin) events += Events.newModifyEvent(id, "begin", Events.timeToString(begin), timeStamp)
+  //    if (due != action.getDue) events += Events.newModifyEvent(id, "due", Events.timeToString(due), timeStamp)
+  //    if (context != action.getContext) events += Events.newModifyEvent(id, "context", context, timeStamp)
+  //    if (priority != action.getPriority) events += Events.newModifyEvent(id, "priority", priority, timeStamp)
+  //    if (isDone != action.getIsDone) events += Events.newModifyEvent(id, "isDone", isDone.toString, timeStamp)
+  //    if (superAction != action.getSuperActionId) events += Events.newModifyEvent(id, "superAction", superAction.toString, timeStamp)
+  //    val event = new AtomicEvent(events)
+  //    performEvent(event)
+  //    actionSet.saveToFile(storageFile)
+  //  }
+  //
+  //  def eventDeleteAction(id: Int) = {
+  //    val timeStamp = LocalDateTime.now
+  //    val action = getAction(id)
+  //
+  //    val events = new ListBuffer[Event]
+  //    events += Events.newDeleteEvent(id)
+  //    val event = new AtomicEvent(events)
+  //    performEvent(event)
+  //    actionSet.saveToFile(storageFile)
+  //  }
+  //
+  //  def saveToFile(file: File) = Events.saveToFile(events, file)
 
   def getAction(id: Int) = actionMap.get(id) match {
     case Some(x) => x
@@ -273,28 +271,28 @@ class ActionSet {
     def hierarchyChanged(id: Int, oldSuperAction: Int, newSuperAction: Int)
   }
 
-  def getNexts = {
-    val availableActions = actionSet.actions.filter(action => (!action.getIsProject) && (!action.getIsDone) && (action.getDue != Events.INVALID_TIME_STAMP))
-    val now = LocalDateTime.now
-    val dueEmergencyActions = availableActions.filter(action => action.getPriority == "Emergency" && action.getDue.isBefore(now)).sortWith((a1, a2) => a1.getDue.isBefore(a2.getDue))
-    val todayEmergencyActions = availableActions.filter(action => action.getPriority == "Emergency" && action.getDue.isAfter(now) && action.getDue.isBefore(LocalDate.from(now.plusDays(1)).atStartOfDay())).sortWith((a1, a2) => a1.getDue.isBefore(a2.getDue))
-    val dueImmediateActions = availableActions.filter(action => action.getPriority == "Immediate" && action.getDue.isBefore(now)).sortWith((a1, a2) => a1.getDue.isBefore(a2.getDue))
-    val dueNormalActions = availableActions.filter(action => action.getPriority == "Normal" && action.getDue.isBefore(now)).sortWith((a1, a2) => a1.getDue.isBefore(a2.getDue))
-    val dueOpportunityActions = availableActions.filter(action => action.getPriority == "Opportunity" && action.getDue.isBefore(now)).sortWith((a1, a2) => a1.getDue.isBefore(a2.getDue))
-    val otherEmergencyActions = availableActions.filter(action => action.getPriority == "Emergency" && action.getDue.isAfter(LocalDate.from(now.plusDays(1)).atStartOfDay())).sortWith((a1, a2) => a1.getDue.isBefore(a2.getDue))
-    val almostDueImmediateActions = availableActions.filter(action => action.getPriority == "Immediate" && action.getDue.isAfter(now) && action.getDue.isBefore(now.plusHours(24))).sortWith((a1, a2) => a1.getDue.isBefore(a2.getDue))
-    val almostDueNormalActions = availableActions.filter(action => action.getPriority == "Normal" && action.getDue.isAfter(now) && action.getDue.isBefore(now.plusHours(24))).sortWith((a1, a2) => a1.getDue.isBefore(a2.getDue))
-    val almostDueOpportunityActions = availableActions.filter(action => action.getPriority == "Opportunity" && action.getDue.isAfter(now) && action.getDue.isBefore(now.plusHours(24))).sortWith((a1, a2) => a1.getDue.isBefore(a2.getDue))
-    val futureImmediateActions = availableActions.filter(action => action.getPriority == "Immediate" && action.getDue.isAfter(now.plusHours(24))).sortWith((a1, a2) => a1.getDue.isBefore(a2.getDue))
-    val futureNormalActions = availableActions.filter(action => action.getPriority == "Normal" && action.getDue.isAfter(now.plusHours(24))).sortWith((a1, a2) => a1.getDue.isBefore(a2.getDue))
-    val futureOpportunityActions = availableActions.filter(action => action.getPriority == "Opportunity" && action.getDue.isAfter(now.plusHours(24))).sortWith((a1, a2) => a1.getDue.isBefore(a2.getDue))
-    val list = dueEmergencyActions ::: todayEmergencyActions ::: dueImmediateActions ::: dueNormalActions ::: almostDueImmediateActions ::: otherEmergencyActions ::: almostDueNormalActions ::: dueOpportunityActions ::: almostDueOpportunityActions ::: futureImmediateActions ::: futureNormalActions ::: futureOpportunityActions
-    list
-  }
-
-  def getNext = getNexts.headOption
-
+  //  def getNexts = {
+  //    val availableActions = actionSet.actions.filter(action => (!action.getIsProject) && (!action.getIsDone) && (action.getDue != Events.INVALID_TIME_STAMP))
+  //    val now = LocalDateTime.now
+  //    val dueEmergencyActions = availableActions.filter(action => action.getPriority == "Emergency" && action.getDue.isBefore(now)).sortWith((a1, a2) => a1.getDue.isBefore(a2.getDue))
+  //    val todayEmergencyActions = availableActions.filter(action => action.getPriority == "Emergency" && action.getDue.isAfter(now) && action.getDue.isBefore(LocalDate.from(now.plusDays(1)).atStartOfDay())).sortWith((a1, a2) => a1.getDue.isBefore(a2.getDue))
+  //    val dueImmediateActions = availableActions.filter(action => action.getPriority == "Immediate" && action.getDue.isBefore(now)).sortWith((a1, a2) => a1.getDue.isBefore(a2.getDue))
+  //    val dueNormalActions = availableActions.filter(action => action.getPriority == "Normal" && action.getDue.isBefore(now)).sortWith((a1, a2) => a1.getDue.isBefore(a2.getDue))
+  //    val dueOpportunityActions = availableActions.filter(action => action.getPriority == "Opportunity" && action.getDue.isBefore(now)).sortWith((a1, a2) => a1.getDue.isBefore(a2.getDue))
+  //    val otherEmergencyActions = availableActions.filter(action => action.getPriority == "Emergency" && action.getDue.isAfter(LocalDate.from(now.plusDays(1)).atStartOfDay())).sortWith((a1, a2) => a1.getDue.isBefore(a2.getDue))
+  //    val almostDueImmediateActions = availableActions.filter(action => action.getPriority == "Immediate" && action.getDue.isAfter(now) && action.getDue.isBefore(now.plusHours(24))).sortWith((a1, a2) => a1.getDue.isBefore(a2.getDue))
+  //    val almostDueNormalActions = availableActions.filter(action => action.getPriority == "Normal" && action.getDue.isAfter(now) && action.getDue.isBefore(now.plusHours(24))).sortWith((a1, a2) => a1.getDue.isBefore(a2.getDue))
+  //    val almostDueOpportunityActions = availableActions.filter(action => action.getPriority == "Opportunity" && action.getDue.isAfter(now) && action.getDue.isBefore(now.plusHours(24))).sortWith((a1, a2) => a1.getDue.isBefore(a2.getDue))
+  //    val futureImmediateActions = availableActions.filter(action => action.getPriority == "Immediate" && action.getDue.isAfter(now.plusHours(24))).sortWith((a1, a2) => a1.getDue.isBefore(a2.getDue))
+  //    val futureNormalActions = availableActions.filter(action => action.getPriority == "Normal" && action.getDue.isAfter(now.plusHours(24))).sortWith((a1, a2) => a1.getDue.isBefore(a2.getDue))
+  //    val futureOpportunityActions = availableActions.filter(action => action.getPriority == "Opportunity" && action.getDue.isAfter(now.plusHours(24))).sortWith((a1, a2) => a1.getDue.isBefore(a2.getDue))
+  //    val list = dueEmergencyActions ::: todayEmergencyActions ::: dueImmediateActions ::: dueNormalActions ::: almostDueImmediateActions ::: otherEmergencyActions ::: almostDueNormalActions ::: dueOpportunityActions ::: almostDueOpportunityActions ::: futureImmediateActions ::: futureNormalActions ::: futureOpportunityActions
+  //    list
+  //  }
+  //
+  //  def getNext = getNexts.headOption
 }
+
 
 object ActionSet {
   def loadFromFile(file: File) = {
@@ -306,8 +304,8 @@ object ActionSet {
 }
 
 object Events {
-  val INVALID_TIME_STAMP = LocalDateTime.ofEpochSecond(0, 0, ZoneOffset.ofTotalSeconds(TimeZone.getDefault.getRawOffset / 1000))
-
+  //  val INVALID_TIME_STAMP = LocalDateTime.ofEpochSecond(0, 0, ZoneOffset.ofTotalSeconds(TimeZone.getDefault.getRawOffset / 1000))
+  //
   def loadFromFile(file: File) = {
     val root = XML.loadFile(file)
     val eventsSeq = root.child.filter(e => e.label == "events")
@@ -315,20 +313,24 @@ object Events {
     events
   }
 
-  def saveToFile(events: TraversableOnce[AtomicEvent], file: File) = {
-    val document = <todo>
-      {for (atomicEvent <- events) yield atomicEvent.toXMLNode}
-    </todo>
-    val pp = new scala.xml.PrettyPrinter(80, 4)
-    val output = pp.format(document)
-    val pw = new PrintWriter(file, "UTF-8")
-    pw.println(output)
-    pw.close
+  //  def saveToFile(events: TraversableOnce[AtomicEvent], file: File) = {
+  //    val document = <todo>
+  //      {for (atomicEvent <- events) yield atomicEvent.toXMLNode}
+  //    </todo>
+  //    val pp = new scala.xml.PrettyPrinter(80, 4)
+  //    val output = pp.format(document)
+  //    val pw = new PrintWriter(file, "UTF-8")
+  //    pw.println(output)
+  //    pw.close
+  //  }
+  //
+  def timeToString(time: LocalDateTime) = {
+    println("Warning: Events.timeToString need to modify")
+    (time.toEpochSecond(ZoneOffset.ofTotalSeconds(TimeZone.getDefault.getRawOffset / 1000)) * 1000 + time.getNano / 1000000).toString
   }
 
-  def timeToString(time: LocalDateTime) = (time.toEpochSecond(ZoneOffset.ofTotalSeconds(TimeZone.getDefault.getRawOffset / 1000)) * 1000 + time.getNano / 1000000).toString
-
   def stringToTime(timeString: String) = {
+    println("Warning: Events.stringToTime need to modify")
     val t = timeString.toLong
     LocalDateTime.ofEpochSecond(t / 1000, (t % 1000).toInt * 1000000, ZoneOffset.ofTotalSeconds(TimeZone.getDefault.getRawOffset / 1000))
   }
@@ -370,8 +372,8 @@ object Events {
     }
   }
 
-  private def eventXMLNode(event: Event) = {}
-
+  //  private def eventXMLNode(event: Event) = {}
+  //
   def newCreateEvent(eventTargetID: Int, timeStamp: LocalDateTime = LocalDateTime.now) = new Event {
     def perform(actionSet: ActionSet): Unit = {
       actionSet.createAction(eventTargetID, timeStamp)
