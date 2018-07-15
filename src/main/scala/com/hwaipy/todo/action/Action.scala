@@ -162,9 +162,9 @@ class Action(val actionSet: ActionSet, val id: Int, creationTime: LocalDateTime)
   //  }
 }
 
-class ActionSet {
+class ActionSet(storageFile: File) {
   val actionMap = mutable.HashMap[Int, Action]()
-  var events = new ListBuffer[AtomicEvent]()
+  val events = new ListBuffer[AtomicEvent]()
   val rootAction = createAction(0)
   val deletedRootAction = createAction(-1)
 
@@ -201,54 +201,63 @@ class ActionSet {
   //      actionMap.put(action.id, action)
   //    }
 
-  //  def eventCreateAction(title: String, begin: LocalDateTime, due: LocalDateTime, context: String, priority: String, isProject: Boolean, superAction: Int = 0) = {
-  //    val id = actionMap.keys match {
-  //      case keys if keys.isEmpty => 0
-  //      case keys => keys.max + 1
-  //    }
-  //    val events = new ListBuffer[Event]
-  //    val timeStamp = LocalDateTime.now
-  //    events += Events.newCreateEvent(id, timeStamp)
-  //    events += Events.newModifyEvent(id, "title", title, timeStamp)
-  //    events += Events.newModifyEvent(id, "begin", Events.timeToString(begin), timeStamp)
-  //    events += Events.newModifyEvent(id, "due", Events.timeToString(due), timeStamp)
-  //    events += Events.newModifyEvent(id, "context", context, timeStamp)
-  //    events += Events.newModifyEvent(id, "priority", priority, timeStamp)
-  //    events += Events.newModifyEvent(id, "isProject", isProject.toString, timeStamp)
-  //    events += Events.newModifyEvent(id, "superAction", superAction.toString, timeStamp)
-  //    val event = new AtomicEvent(events)
-  //    performEvent(event)
-  //    actionSet.saveToFile(storageFile)
-  //  }
-  //
-  //  def eventModifyAction(id: Int, title: String, begin: LocalDateTime, due: LocalDateTime, context: String, priority: String, isDone: Boolean, superAction: Int = 0) = {
-  //    val events = new ListBuffer[Event]
-  //    val timeStamp = LocalDateTime.now
-  //    val action = getAction(id)
-  //    if (title != action.getTitle) events += Events.newModifyEvent(id, "title", title, timeStamp)
-  //    if (begin != action.getBegin) events += Events.newModifyEvent(id, "begin", Events.timeToString(begin), timeStamp)
-  //    if (due != action.getDue) events += Events.newModifyEvent(id, "due", Events.timeToString(due), timeStamp)
-  //    if (context != action.getContext) events += Events.newModifyEvent(id, "context", context, timeStamp)
-  //    if (priority != action.getPriority) events += Events.newModifyEvent(id, "priority", priority, timeStamp)
-  //    if (isDone != action.getIsDone) events += Events.newModifyEvent(id, "isDone", isDone.toString, timeStamp)
-  //    if (superAction != action.getSuperActionId) events += Events.newModifyEvent(id, "superAction", superAction.toString, timeStamp)
-  //    val event = new AtomicEvent(events)
-  //    performEvent(event)
-  //    actionSet.saveToFile(storageFile)
-  //  }
-  //
-  //  def eventDeleteAction(id: Int) = {
-  //    val timeStamp = LocalDateTime.now
-  //    val action = getAction(id)
-  //
-  //    val events = new ListBuffer[Event]
-  //    events += Events.newDeleteEvent(id)
-  //    val event = new AtomicEvent(events)
-  //    performEvent(event)
-  //    actionSet.saveToFile(storageFile)
-  //  }
-  //
-  //  def saveToFile(file: File) = Events.saveToFile(events, file)
+  def eventCreateAction(title: String, begin: LocalDateTime, due: LocalDateTime, context: String, priority: String, isProject: Boolean, superAction: Int = 0) = {
+    val id = actionMap.keys match {
+      case keys if keys.isEmpty => 0
+      case keys => keys.max + 1
+    }
+    val events = new ListBuffer[Event]
+    val timeStamp = LocalDateTime.now
+    events += Events.newCreateEvent(id, timeStamp)
+    events += Events.newModifyEvent(id, "title", title, timeStamp)
+    events += Events.newModifyEvent(id, "begin", Events.timeToString(begin), timeStamp)
+    events += Events.newModifyEvent(id, "due", Events.timeToString(due), timeStamp)
+    events += Events.newModifyEvent(id, "context", context, timeStamp)
+    events += Events.newModifyEvent(id, "priority", priority, timeStamp)
+    events += Events.newModifyEvent(id, "isProject", isProject.toString, timeStamp)
+    events += Events.newModifyEvent(id, "superAction", superAction.toString, timeStamp)
+    val event = new AtomicEvent(events)
+    performEvent(event)
+    if (storageFile != null) saveToFile(storageFile)
+  }
+
+  def eventModifyAction(id: Int, title: String, begin: LocalDateTime, due: LocalDateTime, context: String, priority: String, isDone: Boolean, superAction: Int = 0) = {
+    val events = new ListBuffer[Event]
+    val timeStamp = LocalDateTime.now
+    val action = getAction(id)
+    if (title != action.getTitle) events += Events.newModifyEvent(id, "title", title, timeStamp)
+    if (begin != action.getBegin) events += Events.newModifyEvent(id, "begin", Events.timeToString(begin), timeStamp)
+    if (due != action.getDue) events += Events.newModifyEvent(id, "due", Events.timeToString(due), timeStamp)
+    if (context != action.getContext) events += Events.newModifyEvent(id, "context", context, timeStamp)
+    if (priority != action.getPriority) events += Events.newModifyEvent(id, "priority", priority, timeStamp)
+    if (isDone != action.getIsDone) events += Events.newModifyEvent(id, "isDone", isDone.toString, timeStamp)
+    if (superAction != action.getSuperActionId) events += Events.newModifyEvent(id, "superAction", superAction.toString, timeStamp)
+    val event = new AtomicEvent(events)
+    performEvent(event)
+    saveToFile(storageFile)
+  }
+
+  def eventModifyActionTitle(id: Int, newTitle: String) = {
+    val events = new ListBuffer[Event]
+    val timeStamp = LocalDateTime.now
+    val action = getAction(id)
+    if (newTitle != action.getTitle) events += Events.newModifyEvent(id, "title", newTitle, timeStamp)
+    val event = new AtomicEvent(events)
+    performEvent(event)
+    saveToFile(storageFile)
+  }
+
+  def eventDeleteAction(id: Int) = {
+    val timeStamp = LocalDateTime.now
+    val action = getAction(id)
+    val events = new ListBuffer[Event]
+    events += Events.newDeleteEvent(id)
+    val event = new AtomicEvent(events)
+    performEvent(event)
+    saveToFile(storageFile)
+  }
+
+  def saveToFile(file: File) = Events.saveToFile(events, file)
 
   def getAction(id: Int) = actionMap.get(id) match {
     case Some(x) => x
@@ -297,8 +306,31 @@ class ActionSet {
 object ActionSet {
   def loadFromFile(file: File) = {
     val events = Events.loadFromFile(file)
-    val actionSet = new ActionSet
+    val actionSet = new ActionSet(file)
     events.foreach(actionSet.performEvent)
+    actionSet
+  }
+
+  def testSet = {
+    val actionSet = new ActionSet(null)
+    actionSet.createAction(1)
+    actionSet.getAction(1).modifyProperty("title", "Project 1")
+    actionSet.getAction(1).modifyProperty("isProject", "true")
+    actionSet.createAction(2)
+    actionSet.getAction(2).modifyProperty("title", "Project 2")
+    actionSet.getAction(2).modifyProperty("isProject", "true")
+    actionSet.createAction(3)
+    actionSet.getAction(3).modifyProperty("title", "Project 3")
+    actionSet.getAction(3).modifyProperty("isProject", "true")
+    actionSet.createAction(4)
+    actionSet.getAction(4).modifyProperty("title", "Project 4")
+    actionSet.getAction(4).modifyProperty("isProject", "true")
+    actionSet.getAction(4).modifyProperty("superAction", "2")
+    actionSet.createAction(5)
+    actionSet.getAction(5).modifyProperty("title", "Project 5")
+    actionSet.getAction(5).modifyProperty("isProject", "true")
+    actionSet.getAction(5).modifyProperty("superAction", "2")
+
     actionSet
   }
 }
@@ -313,17 +345,17 @@ object Events {
     events
   }
 
-  //  def saveToFile(events: TraversableOnce[AtomicEvent], file: File) = {
-  //    val document = <todo>
-  //      {for (atomicEvent <- events) yield atomicEvent.toXMLNode}
-  //    </todo>
-  //    val pp = new scala.xml.PrettyPrinter(80, 4)
-  //    val output = pp.format(document)
-  //    val pw = new PrintWriter(file, "UTF-8")
-  //    pw.println(output)
-  //    pw.close
-  //  }
-  //
+  def saveToFile(events: TraversableOnce[AtomicEvent], file: File) = {
+    val document = <todo>
+      {for (atomicEvent <- events) yield atomicEvent.toXMLNode}
+    </todo>
+    val pp = new scala.xml.PrettyPrinter(80, 4)
+    val output = pp.format(document)
+    val pw = new PrintWriter(file, "UTF-8")
+    pw.println(output)
+    pw.close
+  }
+
   def timeToString(time: LocalDateTime) = {
     println("Warning: Events.timeToString need to modify")
     (time.toEpochSecond(ZoneOffset.ofTotalSeconds(TimeZone.getDefault.getRawOffset / 1000)) * 1000 + time.getNano / 1000000).toString

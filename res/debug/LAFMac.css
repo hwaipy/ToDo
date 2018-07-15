@@ -50,7 +50,7 @@
 }
 
 #hsidebar-togglebutton-Project:selected {
-    -fx-background-color: rgb(10, 180, 180);
+    -fx-background-color: rgb(231, 235, 241);
 }
 
 #hsidebar-togglebutton-B:selected {
@@ -67,8 +67,7 @@
 
 #project-treeview {
     -fx-border-width: 0;
-    -fx-border-color: red;
-    -fx-background-color: transparent;
+    -fx-background-color: rgb(231, 235, 241);
 }
 
 #project-treeview:focused {
@@ -84,6 +83,26 @@
 }
 
 .project-view-tree-cell {
-    -fx-background-color: white;
+    -fx-background-color: transparent;
     -fx-border-width: 0;
+}
+
+.project-view-tree-cell-graphic {
+    -fx-background-color: transparent;
+    -fx-border-width: 0;
+}
+
+.project-view-tree-cell:focused {
+    -fx-background-color: gray;
+    -fx-border-width: 0;
+}
+
+#project-view-split {
+    -fx-background-color: green;
+    -fx-border-width: 0;
+    -fx-indent: 0;
+}
+
+.split-pane > .split-pane-divider {
+    -fx-padding: 0 0.0em 0 0.0em;
 }

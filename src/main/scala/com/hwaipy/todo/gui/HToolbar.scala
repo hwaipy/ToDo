@@ -31,7 +31,7 @@ class HToolBar(orientation: Orientation = Orientation.Horizontal) extends Anchor
   private val childrenListTailing = new ListBuffer[Region]
 
   def addButton(name: String, icon: Image, action: () => Unit, alignment: Alignment = Leading) = {
-    val buttonPane = new HToolBarButtonPanel(name)
+    val buttonPane = new HToolBarButtonPanel(name, action)
     (alignment match {
       case Leading => childrenListLeading
       case Tailing => childrenListTailing
@@ -102,7 +102,7 @@ class HToolBar(orientation: Orientation = Orientation.Horizontal) extends Anchor
   this.getStyleClass.add("htoolbar")
 }
 
-class HToolBarButtonPanel(name: String) extends AnchorPane {
+class HToolBarButtonPanel(name: String, action: () => Unit) extends AnchorPane {
   val button = new Button()
 
   prefWidth = 60
@@ -122,4 +122,5 @@ class HToolBarButtonPanel(name: String) extends AnchorPane {
 
   button.getStyleClass.add("htoolbar-button")
   label.getStyleClass.add("htoolbar-label")
+  button.onAction = (a) => action()
 }

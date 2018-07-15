@@ -2,17 +2,11 @@ package com.hwaipy.todo
 
 import java.awt.image.BufferedImage
 import java.io.{File, FileOutputStream, PrintStream}
-import java.time.format.DateTimeFormatter
-import java.time.{Duration, LocalDateTime}
-import java.util.TimerTask
-import javafx.beans.value.{ChangeListener, ObservableValue}
-import javafx.scene.control
-import javax.swing.tree.DefaultTreeCellEditor
+import java.time.LocalDateTime
 
 import scala.language.reflectiveCalls
 import com.hwaipy.todo.action._
 
-import scalafx.Includes._
 import scalafx.application.{JFXApp, Platform}
 import scalafx.application.JFXApp.PrimaryStage
 import scalafx.beans.property.{IntegerProperty, StringProperty}
@@ -23,16 +17,23 @@ import scalafx.scene.control._
 import scalafx.scene.input.{KeyEvent, MouseEvent}
 import scalafx.scene.layout.{AnchorPane, GridPane, Region}
 import java.nio.file.{Files, StandardCopyOption}
+import javafx.geometry
 
-import com.hwaipy.todo.gui.{HSideBar, HToolBar, HTreeView, ProjectViewTreeCell}
+import com.hwaipy.todo.gui._
 
+import scala.collection.mutable
+import scalafx.animation.{KeyFrame, KeyValue, Timeline}
 import scalafx.scene.control.cell.{ConvertableCell, TextFieldTreeCell, UpdatableCell}
+import scalafx.util.Duration
+import scalafx.Includes._
+import scalafx.scene.shape.Rectangle
 
 object ToDoAppNew extends JFXApp {
   val DEBUG = new File(".").getAbsolutePath.contains("GitHub")
   val storageFile = new File("ToDo.xml")
 
   val actionSet = ActionSet.loadFromFile(storageFile)
+  //  val actionSet = ActionSet.testSet
 
   if (!DEBUG) {
     System.setOut(new PrintStream(new FileOutputStream(s"StdOut-${LocalDateTime.now}.txt".replaceAll(":", "-")), true))
@@ -68,7 +69,7 @@ object ToDoAppNew extends JFXApp {
   rootPane.prefWidth = 1200
 
   val toolbar = new HToolBar
-  toolbar.addButton("Sidebar", null, () => {})
+  toolbar.addButton("New", null, () => generalActions.get("New").foreach(a => a()))
   toolbar.addButton("hoho", null, () => {})
   toolbar.addButton("hihi", null, () => {})
   AnchorPane.setTopAnchor(toolbar, 0.0)
@@ -99,12 +100,22 @@ object ToDoAppNew extends JFXApp {
   rootPane.children = Seq(sidebar, toolbar, projectView, BView, CView)
   sidebar.select("Project")
 
+  var generalActions = new mutable.HashMap[String, () => Unit]
+
   def createProjectView = {
     val view = new AnchorPane
     view.id = "projectview"
+    val clipRec = new Rectangle
+    clipRec.x = 0
+    clipRec.y = 0
+    clipRec.height <== view.height
+    clipRec.width <== view.width
+    view.clip = clipRec
     val projectViewSplitPane = new SplitPane
+    projectViewSplitPane.dividerPositions = 0.24
+    projectViewSplitPane.setId("project-view-split")
     view.children = Seq(projectViewSplitPane)
-    AnchorPane.setAnchors(projectViewSplitPane, 0, 0, 0, 0)
+    AnchorPane.setAnchors(projectViewSplitPane, -1, 1, -1, -1)
 
     val projectActionView = new ActionView(actionSet)
     projectActionView.applyFilter((action => {
@@ -112,13 +123,27 @@ object ToDoAppNew extends JFXApp {
     }))
     val rootItem = projectActionView.getTreeItem(0)
     rootItem.setExpanded(true)
-    val tree = new HTreeView[ObservableAction](rootItem, (treeItem) => new ProjectViewTreeCell(treeItem))
-    tree.id = "project-treeview"
-    projectViewSplitPane.items += tree
+    //    val actionTreeView = new HTreeView[ObservableAction](rootItem)
+    //    val projectTreeView = new HTreeView[ObservableAction](rootItem, (treeItem) => new ProjectViewTreeViewCell(treeItem),
+    //      (selectedOA) => println(s"select ${selectedOA.title}"))
+    val projectTreeView = ProjectTreeView.create(rootItem)
+    projectTreeView.focused.onChange((a, b, c) => {
+      generalActions("New") = if (c) () => newProject else () => {}
+    })
+
+    projectViewSplitPane.items += projectTreeView
+    projectViewSplitPane.items += new AnchorPane()
+
+    def newProject = {
+      val selectedTreeItem = projectTreeView.selectionModel.value.getSelectedItem
+      val superActionID = if (selectedTreeItem == null) projectTreeView.root.value.getValue.action.id else {
+        selectedTreeItem.getValue.action.getSuperActionId
+      }
+      actionSet.eventCreateAction("New Project", LocalDateTime.now, LocalDateTime.now, "", "Normal", true, superActionID)
+    }
 
     view
   }
-
 }
 
 
