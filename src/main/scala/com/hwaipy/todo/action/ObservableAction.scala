@@ -1,9 +1,9 @@
 package com.hwaipy.todo.action
 
 import java.beans.{PropertyChangeEvent, PropertyChangeListener}
-//import com.hwaipy.todo.action.{Action, ActionSet}
+
 import scala.collection.mutable
-import scalafx.beans.property.{ObjectProperty, StringProperty}
+import scalafx.beans.property.{BooleanProperty, IntegerProperty, ObjectProperty, StringProperty}
 import scalafx.scene.control.TreeItem
 
 class ObservableAction(val action: Action) {
@@ -16,8 +16,8 @@ class ObservableAction(val action: Action) {
         case "context" => context.value = action.getContext
         case "priority" => priority.value = action.getPriority
         case "isDone" => isDone.value = action.getIsDone
-//        case "dueCount" => dueCount.value = action.getDueCount
-//        case "almostDueCount" => almostDueCount.value = action.getAlmostDueCount
+        case "dueCount" => dueCount.value = action.getDueCount
+        case "almostDueCount" => almostDueCount.value = action.getAlmostDueCount
       }
       lastModified.value = action.getLastModified
     }
@@ -31,15 +31,14 @@ class ObservableAction(val action: Action) {
   val context = StringProperty(action.getContext)
   val priority = StringProperty(action.getPriority)
   val isProject = ObjectProperty(action.getIsProject)
-  val isDone = ObjectProperty(action.getIsDone)
-
-  //  val dueCount = ObjectProperty(action.getDueCount)
-  //  val almostDueCount = ObjectProperty(action.getAlmostDueCount)
+  val isDone = BooleanProperty(action.getIsDone)
+  val dueCount = IntegerProperty(action.getDueCount)
+  val almostDueCount = IntegerProperty(action.getAlmostDueCount)
 
   override def toString: String = s"ObservableAction[${action.getTitle}]"
 }
 
-class ActionView(actionSet: ActionSet) {
+class ActionView(actionSet: ActionSet, expandAll: Boolean = true) {
   val itemMap = new mutable.HashMap[Int, TreeItem[ObservableAction]]()
   private var filter = (action: Action) => true
   refresh
@@ -65,7 +64,6 @@ class ActionView(actionSet: ActionSet) {
     refresh
   }
 
-
   def refresh = {
     itemMap.values.foreach(_.children.clear)
     if (!itemMap.contains(0)) itemMap.put(0, new TreeItem[ObservableAction](new ObservableAction(actionSet.rootAction)))
@@ -77,4 +75,6 @@ class ActionView(actionSet: ActionSet) {
       superItem.getChildren.addAll(item)
     })
   }
+
+  if (expandAll) itemMap.values.foreach(item => item.expanded = true)
 }

@@ -9,3 +9,5 @@ fork := true
 libraryDependencies += "org.scalatest" %% "scalatest" % "3.0.4" % "test"
 libraryDependencies += "org.scala-lang.modules" %% "scala-xml" % "1.0.6"
 scalacOptions in ThisBuild ++= Seq("-feature", "-deprecation")
+// [Required] Enable plugin and automatically find def main(args:Array[String]) methods from the classpath
+enablePlugins(PackPlugin)

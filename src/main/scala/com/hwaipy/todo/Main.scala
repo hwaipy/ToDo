@@ -7,24 +7,14 @@ import java.time.LocalDateTime
 import scala.language.reflectiveCalls
 import com.hwaipy.todo.action._
 
-import scalafx.application.{JFXApp, Platform}
+import scalafx.application.JFXApp
 import scalafx.application.JFXApp.PrimaryStage
-import scalafx.beans.property.{IntegerProperty, StringProperty}
-import scalafx.collections.ObservableBuffer
-import scalafx.geometry.{Insets, Orientation}
 import scalafx.scene.Scene
 import scalafx.scene.control._
-import scalafx.scene.input.{KeyEvent, MouseEvent}
-import scalafx.scene.layout.{AnchorPane, GridPane, Region}
+import scalafx.scene.layout.{AnchorPane, Region}
 import java.nio.file.{Files, StandardCopyOption}
-import javafx.geometry
-
 import com.hwaipy.todo.gui._
-
 import scala.collection.mutable
-import scalafx.animation.{KeyFrame, KeyValue, Timeline}
-import scalafx.scene.control.cell.{ConvertableCell, TextFieldTreeCell, UpdatableCell}
-import scalafx.util.Duration
 import scalafx.Includes._
 import scalafx.scene.shape.Rectangle
 
@@ -46,39 +36,21 @@ object ToDoAppNew extends JFXApp {
   val rootPane = new AnchorPane
   rootPane.getStylesheets.add(ClassLoader.getSystemClassLoader.getResource("com/hwaipy/todo/gui/LAFMac.css").toExternalForm)
 
-  if (DEBUG) {
-    val thread = new Thread(() => {
-      val file = new File("res/debug/LAFMac.css")
-      while (true) {
-        rootPane.getStylesheets.remove(0)
-        rootPane.getStylesheets.add(file.toURI.toURL.toExternalForm)
-        do {
-          Thread.sleep(1000)
-        } while (file.lastModified < System.currentTimeMillis - 5000)
-        println("update gui")
-      }
-    })
-    thread.setDaemon(true)
-    thread.start
-  }
-
   stage.scene = new Scene {
     root = rootPane
   }
   rootPane.prefHeight = 720
-  rootPane.prefWidth = 1200
+  rootPane.prefWidth = 800
 
   val toolbar = new HToolBar
   toolbar.addButton("New", null, () => generalActions.get("New").foreach(a => a()))
-  toolbar.addButton("hoho", null, () => {})
-  toolbar.addButton("hihi", null, () => {})
   AnchorPane.setTopAnchor(toolbar, 0.0)
   AnchorPane.setLeftAnchor(toolbar, 0.0)
   AnchorPane.setRightAnchor(toolbar, 0.0)
 
   val sidebar = new HSideBar(List(
     ("Project", new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB)),
-    ("B", new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB)),
+    ("Nexts", new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB)),
     ("C", new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB))), (actionName) => {
     viewMap.keys.foreach(key => viewMap(key).visible = key == actionName)
   })
@@ -88,16 +60,16 @@ object ToDoAppNew extends JFXApp {
 
   val projectView = createProjectView
   AnchorPane.setAnchors(projectView, toolbar.prefHeight.value, 0, 0, sidebar.prefWidth.value)
-  val BView = new AnchorPane
-  BView.id = "Bview"
-  AnchorPane.setAnchors(BView, toolbar.prefHeight.value, 0, 0, sidebar.prefWidth.value)
+  val nextsView = new AnchorPane
+  nextsView.id = "nextview"
+  AnchorPane.setAnchors(nextsView, toolbar.prefHeight.value, 0, 0, sidebar.prefWidth.value)
   val CView = new AnchorPane
   CView.id = "Cview"
   AnchorPane.setAnchors(CView, toolbar.prefHeight.value, 0, 0, sidebar.prefWidth.value)
 
-  val viewMap = Map[String, Region](("Project", projectView), ("B", BView), ("C", CView))
+  val viewMap = Map[String, Region](("Project", projectView), ("Nexts", nextsView), ("C", CView))
 
-  rootPane.children = Seq(sidebar, toolbar, projectView, BView, CView)
+  rootPane.children = Seq(sidebar, toolbar, projectView, nextsView, CView)
   sidebar.select("Project")
 
   var generalActions = new mutable.HashMap[String, () => Unit]
@@ -112,27 +84,18 @@ object ToDoAppNew extends JFXApp {
     clipRec.width <== view.width
     view.clip = clipRec
     val projectViewSplitPane = new SplitPane
-    projectViewSplitPane.dividerPositions = 0.24
+    projectViewSplitPane.dividerPositions = 0.3
     projectViewSplitPane.setId("project-view-split")
     view.children = Seq(projectViewSplitPane)
     AnchorPane.setAnchors(projectViewSplitPane, -1, 1, -1, -1)
 
     val projectActionView = new ActionView(actionSet)
-    projectActionView.applyFilter((action => {
-      action.getIsProject
-    }))
+    projectActionView.applyFilter((action => action.getIsProject && !action.getIsDone))
     val rootItem = projectActionView.getTreeItem(0)
-    rootItem.setExpanded(true)
-    //    val actionTreeView = new HTreeView[ObservableAction](rootItem)
-    //    val projectTreeView = new HTreeView[ObservableAction](rootItem, (treeItem) => new ProjectViewTreeViewCell(treeItem),
-    //      (selectedOA) => println(s"select ${selectedOA.title}"))
     val projectTreeView = ProjectTreeView.create(rootItem)
     projectTreeView.focused.onChange((a, b, c) => {
       generalActions("New") = if (c) () => newProject else () => {}
     })
-
-    projectViewSplitPane.items += projectTreeView
-    projectViewSplitPane.items += new AnchorPane()
 
     def newProject = {
       val selectedTreeItem = projectTreeView.selectionModel.value.getSelectedItem
@@ -141,6 +104,20 @@ object ToDoAppNew extends JFXApp {
       }
       actionSet.eventCreateAction("New Project", LocalDateTime.now, LocalDateTime.now, "", "Normal", true, superActionID)
     }
+
+    val projectActionActionView = new ActionView(actionSet)
+    projectActionActionView.applyFilter((action => !action.getIsDone))
+    val projectActionTreeView = ProjectActionTreeView.create(null)
+
+    projectTreeView.selectionModel.value.selectFirst
+    projectTreeView.selectionModel.value.selectedItemProperty.onChange((a, b, c) => if (c != null && c.getValue != null) {
+      val needViewProject = c.getValue
+      projectActionTreeView.root = projectActionActionView.getTreeItem(needViewProject.action.id)
+      projectActionTreeView.root.value.setExpanded(true)
+    })
+
+    projectViewSplitPane.items += projectTreeView
+    projectViewSplitPane.items += projectActionTreeView
 
     view
   }

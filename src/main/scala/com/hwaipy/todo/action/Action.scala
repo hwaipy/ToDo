@@ -105,31 +105,31 @@ class Action(val actionSet: ActionSet, val id: Int, creationTime: LocalDateTime)
     oldBool.toString
   }
 
-  //  def updateDueCounts: Unit = {
-  //    val children = childrenIDs.map(id => actionSet.getAction(id))
-  //    children.foreach(c => c.updateDueCounts)
-  //    var newDueCount = children.map(c => c.dueCount).sum
-  //    var newAlmostDueCount = children.map(c => c.almostDueCount).sum
-  //    if (!isProject && (due != Events.INVALID_TIME_STAMP && !isDone)) {
-  //      val now = LocalDateTime.now
-  //      val delta = Duration.between(now, due).getSeconds
-  //      if (delta < 0) newDueCount += 1
-  //      else if (delta < 3600 * 24) newAlmostDueCount += 1
-  //    }
-  //    if (newDueCount != dueCount) {
-  //      val oldDueCount = dueCount
-  //      dueCount = newDueCount
-  //      firePropertyChangeEvent("dueCount", oldDueCount, newDueCount)
-  //      firePropertyChangeEvent("due", due, due)
-  //    }
-  //    if (newAlmostDueCount != almostDueCount) {
-  //      val oldAlmostDueCount = almostDueCount
-  //      almostDueCount = newAlmostDueCount
-  //      firePropertyChangeEvent("almostDueCount", oldAlmostDueCount, newAlmostDueCount)
-  //      firePropertyChangeEvent("due", due, due)
-  //    }
-  //  }
-  //
+  def updateDueCounts: Unit = {
+    val children = childrenIDs.map(id => actionSet.getAction(id))
+    children.foreach(c => c.updateDueCounts)
+    var newDueCount = children.map(c => c.dueCount).sum
+    var newAlmostDueCount = children.map(c => c.almostDueCount).sum
+    if (!isProject && (due != Events.INVALID_TIME_STAMP && !isDone)) {
+      val now = LocalDateTime.now
+      val delta = Duration.between(now, due).getSeconds
+      if (delta < 0) newDueCount += 1
+      else if (delta < 3600 * 24) newAlmostDueCount += 1
+    }
+    if (newDueCount != dueCount) {
+      val oldDueCount = dueCount
+      dueCount = newDueCount
+      firePropertyChangeEvent("dueCount", oldDueCount, newDueCount)
+      firePropertyChangeEvent("due", due, due)
+    }
+    if (newAlmostDueCount != almostDueCount) {
+      val oldAlmostDueCount = almostDueCount
+      almostDueCount = newAlmostDueCount
+      firePropertyChangeEvent("almostDueCount", oldAlmostDueCount, newAlmostDueCount)
+      firePropertyChangeEvent("due", due, due)
+    }
+  }
+
   def getTitle = title
 
   def getSuperActionId = superAction
@@ -148,18 +148,18 @@ class Action(val actionSet: ActionSet, val id: Int, creationTime: LocalDateTime)
 
   def getIsDone = isDone
 
-  //  def getDueCount = dueCount
-  //
-  //  def getAlmostDueCount = almostDueCount
-  //
-  //  override def toString: String = s"Action[$title]"
-  //
-  //  def childrenIDs = actionSet.actions.filter(a => a.superAction == id).map(_.id)
-  //
-  //  def projectID: Int = isProject match {
-  //    case true => id
-  //    case false => actionSet.getAction(superAction).projectID
-  //  }
+  def getDueCount = dueCount
+
+  def getAlmostDueCount = almostDueCount
+
+  override def toString: String = s"Action[$title]"
+
+  def childrenIDs = actionSet.actions.filter(a => a.superAction == id).map(_.id)
+
+  def projectID: Int = isProject match {
+    case true => id
+    case false => actionSet.getAction(superAction).projectID
+  }
 }
 
 class ActionSet(storageFile: File) {
@@ -171,8 +171,10 @@ class ActionSet(storageFile: File) {
   def performEvent(event: AtomicEvent) = {
     events += event
     event.perform(this)
-    //    rootAction.updateDueCounts
+    rootAction.updateDueCounts
   }
+
+  def updateDueCounts = rootAction.updateDueCounts
 
   def createAction(id: Int, timeStamp: LocalDateTime = LocalDateTime.now) = {
     actionMap.contains(id) match {
@@ -247,6 +249,46 @@ class ActionSet(storageFile: File) {
     saveToFile(storageFile)
   }
 
+  def eventModifyActionContext(id: Int, newContext: String) = {
+    val events = new ListBuffer[Event]
+    val timeStamp = LocalDateTime.now
+    val action = getAction(id)
+    if (newContext != action.getContext) events += Events.newModifyEvent(id, "context", newContext, timeStamp)
+    val event = new AtomicEvent(events)
+    performEvent(event)
+    saveToFile(storageFile)
+  }
+
+  def eventModifyActionPriority(id: Int, newPriority: String) = {
+    val events = new ListBuffer[Event]
+    val timeStamp = LocalDateTime.now
+    val action = getAction(id)
+    if (newPriority != action.getContext) events += Events.newModifyEvent(id, "priority", newPriority, timeStamp)
+    val event = new AtomicEvent(events)
+    performEvent(event)
+    saveToFile(storageFile)
+  }
+
+  def eventModifyActionDue(id: Int, newDue: LocalDateTime) = {
+    val events = new ListBuffer[Event]
+    val timeStamp = LocalDateTime.now
+    val action = getAction(id)
+    if (newDue != action.getContext) events += Events.newModifyEvent(id, "due", Events.timeToString(newDue), timeStamp)
+    val event = new AtomicEvent(events)
+    performEvent(event)
+    saveToFile(storageFile)
+  }
+
+  def eventModifyActionDone(id: Int, isDone: Boolean) = {
+    val events = new ListBuffer[Event]
+    val timeStamp = LocalDateTime.now
+    val action = getAction(id)
+    if (isDone != action.getIsDone) events += Events.newModifyEvent(id, "isDone", isDone.toString, timeStamp)
+    val event = new AtomicEvent(events)
+    performEvent(event)
+    saveToFile(storageFile)
+  }
+
   def eventDeleteAction(id: Int) = {
     val timeStamp = LocalDateTime.now
     val action = getAction(id)
@@ -304,6 +346,8 @@ class ActionSet(storageFile: File) {
 
 
 object ActionSet {
+  println("Warning: Events.timeToString and stringToTime need to modify")
+
   def loadFromFile(file: File) = {
     val events = Events.loadFromFile(file)
     val actionSet = new ActionSet(file)
@@ -336,8 +380,8 @@ object ActionSet {
 }
 
 object Events {
-  //  val INVALID_TIME_STAMP = LocalDateTime.ofEpochSecond(0, 0, ZoneOffset.ofTotalSeconds(TimeZone.getDefault.getRawOffset / 1000))
-  //
+  val INVALID_TIME_STAMP = LocalDateTime.ofEpochSecond(0, 0, ZoneOffset.ofTotalSeconds(TimeZone.getDefault.getRawOffset / 1000))
+
   def loadFromFile(file: File) = {
     val root = XML.loadFile(file)
     val eventsSeq = root.child.filter(e => e.label == "events")
@@ -357,12 +401,10 @@ object Events {
   }
 
   def timeToString(time: LocalDateTime) = {
-    println("Warning: Events.timeToString need to modify")
     (time.toEpochSecond(ZoneOffset.ofTotalSeconds(TimeZone.getDefault.getRawOffset / 1000)) * 1000 + time.getNano / 1000000).toString
   }
 
   def stringToTime(timeString: String) = {
-    println("Warning: Events.stringToTime need to modify")
     val t = timeString.toLong
     LocalDateTime.ofEpochSecond(t / 1000, (t % 1000).toInt * 1000000, ZoneOffset.ofTotalSeconds(TimeZone.getDefault.getRawOffset / 1000))
   }
