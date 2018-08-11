@@ -321,27 +321,6 @@ class ActionSet(storageFile: File) {
   trait HierarchyChangeListener extends EventListener {
     def hierarchyChanged(id: Int, oldSuperAction: Int, newSuperAction: Int)
   }
-
-  //  def getNexts = {
-  //    val availableActions = actionSet.actions.filter(action => (!action.getIsProject) && (!action.getIsDone) && (action.getDue != Events.INVALID_TIME_STAMP))
-  //    val now = LocalDateTime.now
-  //    val dueEmergencyActions = availableActions.filter(action => action.getPriority == "Emergency" && action.getDue.isBefore(now)).sortWith((a1, a2) => a1.getDue.isBefore(a2.getDue))
-  //    val todayEmergencyActions = availableActions.filter(action => action.getPriority == "Emergency" && action.getDue.isAfter(now) && action.getDue.isBefore(LocalDate.from(now.plusDays(1)).atStartOfDay())).sortWith((a1, a2) => a1.getDue.isBefore(a2.getDue))
-  //    val dueImmediateActions = availableActions.filter(action => action.getPriority == "Immediate" && action.getDue.isBefore(now)).sortWith((a1, a2) => a1.getDue.isBefore(a2.getDue))
-  //    val dueNormalActions = availableActions.filter(action => action.getPriority == "Normal" && action.getDue.isBefore(now)).sortWith((a1, a2) => a1.getDue.isBefore(a2.getDue))
-  //    val dueOpportunityActions = availableActions.filter(action => action.getPriority == "Opportunity" && action.getDue.isBefore(now)).sortWith((a1, a2) => a1.getDue.isBefore(a2.getDue))
-  //    val otherEmergencyActions = availableActions.filter(action => action.getPriority == "Emergency" && action.getDue.isAfter(LocalDate.from(now.plusDays(1)).atStartOfDay())).sortWith((a1, a2) => a1.getDue.isBefore(a2.getDue))
-  //    val almostDueImmediateActions = availableActions.filter(action => action.getPriority == "Immediate" && action.getDue.isAfter(now) && action.getDue.isBefore(now.plusHours(24))).sortWith((a1, a2) => a1.getDue.isBefore(a2.getDue))
-  //    val almostDueNormalActions = availableActions.filter(action => action.getPriority == "Normal" && action.getDue.isAfter(now) && action.getDue.isBefore(now.plusHours(24))).sortWith((a1, a2) => a1.getDue.isBefore(a2.getDue))
-  //    val almostDueOpportunityActions = availableActions.filter(action => action.getPriority == "Opportunity" && action.getDue.isAfter(now) && action.getDue.isBefore(now.plusHours(24))).sortWith((a1, a2) => a1.getDue.isBefore(a2.getDue))
-  //    val futureImmediateActions = availableActions.filter(action => action.getPriority == "Immediate" && action.getDue.isAfter(now.plusHours(24))).sortWith((a1, a2) => a1.getDue.isBefore(a2.getDue))
-  //    val futureNormalActions = availableActions.filter(action => action.getPriority == "Normal" && action.getDue.isAfter(now.plusHours(24))).sortWith((a1, a2) => a1.getDue.isBefore(a2.getDue))
-  //    val futureOpportunityActions = availableActions.filter(action => action.getPriority == "Opportunity" && action.getDue.isAfter(now.plusHours(24))).sortWith((a1, a2) => a1.getDue.isBefore(a2.getDue))
-  //    val list = dueEmergencyActions ::: todayEmergencyActions ::: dueImmediateActions ::: dueNormalActions ::: almostDueImmediateActions ::: otherEmergencyActions ::: almostDueNormalActions ::: dueOpportunityActions ::: almostDueOpportunityActions ::: futureImmediateActions ::: futureNormalActions ::: futureOpportunityActions
-  //    list
-  //  }
-  //
-  //  def getNext = getNexts.headOption
 }
 
 

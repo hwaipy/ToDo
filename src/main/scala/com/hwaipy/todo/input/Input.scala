@@ -12,6 +12,7 @@ object Input {
   private val PATTERN_XW = Pattern.compile("^([0-9]+) *w(week)?$")
   private val PATTERN_XM = Pattern.compile("^([0-9]+) *m(onth)?$")
   private val DAY_OF_WEEKS = Map("mon" -> 1, "monday" -> 1, "tue" -> 2, "tuesday" -> 2, "wed" -> 3, "wednesday" -> 3, "thu" -> 4, "thursday" -> 4, "fri" -> 5, "friday" -> 5, "sat" -> 6, "saturday" -> 6, "sun" -> 7, "sunday" -> 7)
+  private val PATTERN_DATE = Pattern.compile("^([0-9]+)-([0-9]+)-([0-9]+)$")
   private val PATTERN_DATETIME = Pattern.compile("^([0-9]+)-([0-9]+)-([0-9]+) ([0-9]+):([0-9]+)$")
 
   def stringToDateTime(str: String): LocalDateTime = {
@@ -23,6 +24,15 @@ object Input {
       case s if find(PATTERN_XM, s) != None => getTimeOfTheDay(LocalDateTime.now().plusMonths(find(PATTERN_XM, s, 1).get.toInt))
       case s if find(PATTERN_XH, s) != None => LocalDateTime.now().plusHours(find(PATTERN_XH, s, 1).get.toInt)
       case s if DAY_OF_WEEKS.contains(s) => getTimeOfTheDay(getNextDayOfWeek(LocalDateTime.now(), DAY_OF_WEEKS(s)))
+      case s if find(PATTERN_DATE, s) != None => {
+        val matcher = PATTERN_DATE.matcher(s)
+        matcher.find()
+        try {
+          LocalDateTime.of(matcher.group(1).toInt, matcher.group(2).toInt, matcher.group(3).toInt, 17, 0)
+        } catch {
+          case e: Throwable => Events.INVALID_TIME_STAMP
+        }
+      }
       case s if find(PATTERN_DATETIME, s) != None => {
         val matcher = PATTERN_DATETIME.matcher(s)
         matcher.find()

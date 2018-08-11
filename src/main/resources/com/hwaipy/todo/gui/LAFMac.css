@@ -53,8 +53,8 @@
     -fx-background-color: rgb(231, 235, 241);
 }
 
-#hsidebar-togglebutton-B:selected {
-    -fx-background-color: rgb(180, 10, 180);
+#hsidebar-togglebutton-Nexts:selected {
+    -fx-background-color: rgb(230, 230, 240);
 }
 
 #hsidebar-togglebutton-C:selected {
@@ -75,15 +75,15 @@
 }
 
 #project-treeview:focused {
-
 }
 
 #nextview {
-    -fx-background-color: rgb(222, 200, 200);
+    -fx-border-width: 0;
 }
 
-#Cview {
-    -fx-background-color: blue;
+#nexts-treeview {
+    -fx-border-width: 0;
+    -fx-background-color: rgb(230, 230, 240);
 }
 
 #project-action-treeview {
@@ -183,4 +183,61 @@
     -fx-border-radius: 16;
     -fx-border-width: 4;
     -fx-background-radius: 16;
+}
+
+.project-action-view-tree-cell-graphic-done-checkbox:pressed {
+    -fx-border-radius: 16;
+    -fx-border-width: 4;
+    -fx-background-radius: 16;
+}
+
+/*.project-action-view-tree-cell-graphic-done-checkbox:selected {*/
+/*-fx-border-radius: 16;*/
+/*-fx-border-width: 4;*/
+/*-fx-background-radius: 16;*/
+/*}*/
+
+.done-check-status-far-away {
+    -fx-border-color: rgb(206, 206, 206);
+    -fx-background-color: transparent;
+}
+
+.done-check-status-almost {
+    -fx-border-color: rgb(238, 190, 56);
+    -fx-background-color: transparent;
+}
+
+.done-check-status-due {
+    -fx-border-color: rgb(222, 180, 180);
+    -fx-background-color: transparent;
+}
+
+.done-check-status-done {
+    -fx-border-color: rgb(236, 236, 236);
+    -fx-background-color: rgb(236, 236, 236);
+}
+
+.nexts-view-tree-cell {
+    -fx-background-color: transparent;
+    -fx-border-width: 0;
+}
+
+.nexts-view-tree-cell-graphic {
+    -fx-background-color: transparent;
+    -fx-border-width: 0;
+}
+
+.nexts-view-tree-cell:focused {
+    -fx-background-color: gray;
+    -fx-border-width: 0;
+}
+
+#nexts-treeview .tree-cell:selected {
+    -fx-background-color: rgb(180, 205, 241);
+}
+
+.project-action-view-tree-cell-graphic-project-label {
+    -fx-background-color: transparent;
+    -fx-font-size: 12;
+    -fx-font-family: Arial;
 }

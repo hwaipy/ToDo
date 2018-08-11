@@ -12,8 +12,10 @@ import scalafx.application.JFXApp.PrimaryStage
 import scalafx.scene.Scene
 import scalafx.scene.control._
 import scalafx.scene.layout.{AnchorPane, Region}
-import java.nio.file.{Files, StandardCopyOption}
+import java.nio.file.{Files, Paths, StandardCopyOption}
+
 import com.hwaipy.todo.gui._
+
 import scala.collection.mutable
 import scalafx.Includes._
 import scalafx.scene.shape.Rectangle
@@ -26,9 +28,9 @@ object ToDoAppNew extends JFXApp {
   //  val actionSet = ActionSet.testSet
 
   if (!DEBUG) {
-    System.setOut(new PrintStream(new FileOutputStream(s"StdOut-${LocalDateTime.now}.txt".replaceAll(":", "-")), true))
-    System.setErr(new PrintStream(new FileOutputStream(s"StdErr-${LocalDateTime.now}.txt".replaceAll(":", "-")), true))
-    Files.copy(storageFile.toPath, new File(storageFile.getAbsolutePath.reverse.replaceFirst("lmx.", s"lmx.${LocalDateTime.now.toString.replaceAll(":", "-").reverse}").reverse).toPath, StandardCopyOption.COPY_ATTRIBUTES, StandardCopyOption.REPLACE_EXISTING)
+    System.setOut(new PrintStream(new FileOutputStream(s"ToDoHistory/StdOut-${LocalDateTime.now}.txt".replaceAll(":", "-")), true))
+    System.setErr(new PrintStream(new FileOutputStream(s"ToDoHistory/StdErr-${LocalDateTime.now}.txt".replaceAll(":", "-")), true))
+    Files.copy(storageFile.toPath, new File("ToDoHistory/" + storageFile.getName.reverse.replaceFirst("lmx.", s"lmx.${LocalDateTime.now.toString.replaceAll(":", "-").reverse}").reverse).toPath, StandardCopyOption.COPY_ATTRIBUTES, StandardCopyOption.REPLACE_EXISTING)
   }
 
   stage = new PrimaryStage
@@ -50,8 +52,7 @@ object ToDoAppNew extends JFXApp {
 
   val sidebar = new HSideBar(List(
     ("Project", new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB)),
-    ("Nexts", new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB)),
-    ("C", new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB))), (actionName) => {
+    ("Nexts", new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB))), (actionName) => {
     viewMap.keys.foreach(key => viewMap(key).visible = key == actionName)
   })
   AnchorPane.setTopAnchor(sidebar, toolbar.prefHeight.value)
@@ -60,16 +61,13 @@ object ToDoAppNew extends JFXApp {
 
   val projectView = createProjectView
   AnchorPane.setAnchors(projectView, toolbar.prefHeight.value, 0, 0, sidebar.prefWidth.value)
-  val nextsView = new AnchorPane
+  val nextsView = createNextsView
   nextsView.id = "nextview"
   AnchorPane.setAnchors(nextsView, toolbar.prefHeight.value, 0, 0, sidebar.prefWidth.value)
-  val CView = new AnchorPane
-  CView.id = "Cview"
-  AnchorPane.setAnchors(CView, toolbar.prefHeight.value, 0, 0, sidebar.prefWidth.value)
 
-  val viewMap = Map[String, Region](("Project", projectView), ("Nexts", nextsView), ("C", CView))
+  val viewMap = Map[String, Region](("Project", projectView), ("Nexts", nextsView))
 
-  rootPane.children = Seq(sidebar, toolbar, projectView, nextsView, CView)
+  rootPane.children = Seq(sidebar, toolbar, projectView, nextsView)
   sidebar.select("Project")
 
   var generalActions = new mutable.HashMap[String, () => Unit]
@@ -87,7 +85,7 @@ object ToDoAppNew extends JFXApp {
     projectViewSplitPane.dividerPositions = 0.3
     projectViewSplitPane.setId("project-view-split")
     view.children = Seq(projectViewSplitPane)
-    AnchorPane.setAnchors(projectViewSplitPane, -1, 1, -1, -1)
+    AnchorPane.setAnchors(projectViewSplitPane, -1, -1, -1, -1)
 
     val projectActionView = new ActionView(actionSet)
     projectActionView.applyFilter((action => action.getIsProject && !action.getIsDone))
@@ -108,6 +106,9 @@ object ToDoAppNew extends JFXApp {
     val projectActionActionView = new ActionView(actionSet)
     projectActionActionView.applyFilter((action => !action.getIsDone))
     val projectActionTreeView = ProjectActionTreeView.create(null)
+    projectActionTreeView.focused.onChange((a, b, c) => {
+      generalActions("New") = if (c) () => newAction else () => {}
+    })
 
     projectTreeView.selectionModel.value.selectFirst
     projectTreeView.selectionModel.value.selectedItemProperty.onChange((a, b, c) => if (c != null && c.getValue != null) {
@@ -116,8 +117,41 @@ object ToDoAppNew extends JFXApp {
       projectActionTreeView.root.value.setExpanded(true)
     })
 
+    def newAction = {
+      val selectedTreeItem = projectActionTreeView.selectionModel.value.getSelectedItem
+      val superActionID = if (selectedTreeItem == null) {
+        val currentSelectedProject = projectTreeView.selectionModel.value.getSelectedItem
+        if (currentSelectedProject == null) -1 else {
+          currentSelectedProject.value().action.id
+        }
+      } else {
+        selectedTreeItem.getValue.action.getSuperActionId
+      }
+      if (superActionID > 0) actionSet.eventCreateAction("New Action", LocalDateTime.now, Events.INVALID_TIME_STAMP, "", "Normal", false, superActionID)
+    }
+
     projectViewSplitPane.items += projectTreeView
     projectViewSplitPane.items += projectActionTreeView
+
+    view
+  }
+
+  def createNextsView = {
+    val view = new AnchorPane
+    view.id = "nextsview"
+    val clipRec = new Rectangle
+    clipRec.x = 0
+    clipRec.y = 0
+    clipRec.height <== view.height
+    clipRec.width <== view.width
+    view.clip = clipRec
+
+    val actionView = new NextsActionView(actionSet)
+    val rootItem = actionView.root
+    val nextsTreeView = NextsTreeView.create(rootItem)
+    nextsTreeView.selectionModel.value.selectFirst
+    view.children = Seq(nextsTreeView)
+    AnchorPane.setAnchors(nextsTreeView, -1, -1, -1, -1)
 
     view
   }

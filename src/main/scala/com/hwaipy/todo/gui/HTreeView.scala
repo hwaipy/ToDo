@@ -295,7 +295,8 @@ class ProjectViewTreeCellGraphic(treeView: TreeView[ObservableAction]) extends A
   var editingMode = false
   val selectionModel = treeView.selectionModel.value
   selectionModel.selectedItemProperty.onChange((a, b, c) => {
-    textField.mouseTransparent = c.getValue != bindedObservableAction
+    val selectedItem = if (c == null) b else c
+    textField.mouseTransparent = selectedItem.getValue != bindedObservableAction
     tryExitEditingMode
   })
 
@@ -340,22 +341,19 @@ object ProjectActionTreeView {
     val treeView = new TreeView[ObservableAction](rootItem)
     treeView.showRoot = false
     treeView.id = "project-action-treeview"
-    treeView.onKeyPressed = (ke) => {
-      //      if (ke.getCode.getName == KeyCode.BackSpace.getName) {
-      //        val selectedItem = treeView.selectionModel.value.getSelectedItem
-      //        if (selectedItem != null) {
-      //          val tobeDeletedAction = selectedItem.getValue.action
-      //          val alert = new Alert(Alert.AlertType.Confirmation, s"Project [${tobeDeletedAction.getTitle}] and all sub projects and actions will be deleted. Continue?", ButtonType.Yes, ButtonType.No)
-      //          alert.showAndWait
-      //          if (alert.getResult() == ButtonType.Yes.delegate) {
-      //            println("Warning: Delete parent project will lead an exception on sub project at next time startup.")
-      //            tobeDeletedAction.actionSet.eventDeleteAction(tobeDeletedAction.id)
-      //          }
-      //        }
-      //      }
-    }
     println("Warning: The Scrollbar should be hiden.")
     treeView.cellFactory = ProjectActionViewTreeCellFactory.create
+    treeView.onKeyPressed = (ke) => {
+      if (ke.getCode.delegate == KeyCode.Space.delegate) {
+        val selectionModel = treeView.selectionModel.value
+        val selectedItem = selectionModel.getSelectedItem
+        if (selectedItem != null) {
+          val observableAction = selectedItem.getValue
+          observableAction.action.actionSet.eventModifyActionDone(observableAction.action.id, !observableAction.isDone.value)
+        }
+        ke.consume
+      }
+    }
     treeView
   }
 }
@@ -395,7 +393,7 @@ class ProjectActionViewTreeCellGraphic(treeView: TreeView[ObservableAction]) ext
   val contextTextField = new ComboBox[String](Seq("Lab", "Office", "Waiting", "People", "None"))
   val priorityTextField = new ComboBox[String](Seq("Emergency", "Immediate", "Normal", "Opportunity"))
   val dueTextField = new TextField
-  val doneCheckBox = new ToggleButton
+  val doneCheckBox = new Button
   doneCheckBox.focusTraversable = false
   val splitLine = new AnchorPane
   titleTextField.mouseTransparent = true
@@ -403,6 +401,7 @@ class ProjectActionViewTreeCellGraphic(treeView: TreeView[ObservableAction]) ext
   priorityTextField.mouseTransparent = true
   dueTextField.mouseTransparent = true
   priorityTextField.editable = false
+  dueTextField.editable = false
   val titleValueBuffer = new StringProperty
   val contextValueBuffer = new StringProperty
   val priorityValueBuffer = new StringProperty
@@ -413,7 +412,7 @@ class ProjectActionViewTreeCellGraphic(treeView: TreeView[ObservableAction]) ext
   priorityValueBuffer.onChange((a, b, c) => priorityTextField.selectionModel.value.select(c))
   dueValueBuffer.onChange((a, b, c) => updateDueTextField)
   DueUpdateRequest.addChangeListener(() => updateDueTextField)
-  doneValueBuffer.onChange((a, b, c) => doneCheckBox.selected = c)
+  doneValueBuffer.onChange((a, b, c) => updateDueTextField)
   titleTextField.getStyleClass.add("project-action-view-tree-cell-graphic-title-text-field")
   contextTextField.getStyleClass.add("project-action-view-tree-cell-graphic-context-text-field")
   priorityTextField.getStyleClass.add("project-action-view-tree-cell-graphic-priority-text-field")
@@ -428,7 +427,6 @@ class ProjectActionViewTreeCellGraphic(treeView: TreeView[ObservableAction]) ext
   titleTextField.focused.onChange((a, b, c) => if (!c) tryExitEditingMode)
   contextTextField.focused.onChange((a, b, c) => if (!c) tryExitEditingMode)
   priorityTextField.focused.onChange((a, b, c) => if (!c) tryExitEditingMode)
-  dueTextField.focused.onChange((a, b, c) => if (!c) tryExitDueEditingMode)
 
   titleTextField.prefHeight = 30
   contextTextField.prefHeight = 15
@@ -503,16 +501,282 @@ class ProjectActionViewTreeCellGraphic(treeView: TreeView[ObservableAction]) ext
     if (me.getButton == MouseButton.Primary.delegate) {
       editingMode = true
       dueTextField.editable = true
+      dueTextField.selectAll
+    }
+  }
+  dueTextField.focused.onChange((a, b, c) => if (c) {
+    editingMode = true
+    dueTextField.editable = true
+    dueTextField.selectAll
+  } else tryExitDueEditingMode)
+  doneCheckBox.onAction = (a) => if (bindedObservableAction != null) {
+    val modifiedAction = bindedObservableAction.action
+    modifiedAction.actionSet.eventModifyActionDone(modifiedAction.id, !modifiedAction.getIsDone)
+  }
+
+
+  def tryExitEditingMode = if (editingMode) {
+    editingMode = false
+    if (bindedObservableAction != null && titleTextField.text.value != bindedObservableAction.title.value) {
+      val modifiedAction = bindedObservableAction.action
+      modifiedAction.actionSet.eventModifyActionTitle(modifiedAction.id, titleTextField.text.value)
+    }
+    if (bindedObservableAction != null && contextTextField.value.value != bindedObservableAction.context.value) {
+      val modifiedAction = bindedObservableAction.action
+      modifiedAction.actionSet.eventModifyActionContext(modifiedAction.id, contextTextField.value.value)
+    }
+    if (bindedObservableAction != null && priorityTextField.value.value != bindedObservableAction.priority.value) {
+      val modifiedAction = bindedObservableAction.action
+      modifiedAction.actionSet.eventModifyActionPriority(modifiedAction.id, priorityTextField.value.value)
+    }
+  }
+
+  def tryExitDueEditingMode = if (editingMode) {
+    editingMode = false
+    if (bindedObservableAction != null) {
+      val modifiedAction = bindedObservableAction.action
+      val newDueString = dueTextField.text.value
+      val newDue = Input.stringToDateTime(newDueString)
+      dueTextField.editable = false
+      modifiedAction.actionSet.eventModifyActionDue(modifiedAction.id, newDue)
+    }
+    dueTextField.editable = false
+  }
+
+  private val DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd")
+
+  def updateDueTextField = if (bindedObservableAction != null && !dueTextField.editable.value) {
+    println("updating due text")
+    val due = bindedObservableAction.due.value
+    val now = LocalDateTime.now
+    val delta = Duration.between(now, due).getSeconds
+    val displayString = delta match {
+      case d if d >= 3600 * 24 => DATE_FORMATTER.format(due)
+      case d if d >= 3600 * 3 => s"${delta / 3600}h"
+      case d if d >= 3600 => s"${delta / 3600}h ${(delta % 3600) / 60}min"
+      case d if d >= 0 => s"${delta / 60}min"
+      case d if d >= -3600 => s"${-delta / 60}min ago"
+      case d if d >= -3600 * 24 => s"${-delta / 3600}h ago"
+      case d if d <= -3600 * 24 * 365 * 10 => s""
+      case _ => DATE_FORMATTER.format(due)
+    }
+    val dueStatus = if (bindedObservableAction.isDone.value) "done" else delta match {
+      case d if d > 3600 * 24 => "far-away"
+      case d if d > 0 => "almost"
+      case d if d <= -3600 * 24 * 365 * 10 => "far-away"
+      case _ => "due"
+    }
+    dueTextField.text = displayString
+    setDueStatus(dueStatus)
+  }
+
+  private def setDueStatus(status: String) = {
+    dueTextField.getStyleClass.removeAll("due-status-far-away", "due-status-nearly", "due-status-already")
+    doneCheckBox.getStyleClass.removeAll("done-check-status-far-away", "done-check-status-almost", "done-check-status-due", "done-check-status-done")
+    status match {
+      case "far-away" => {
+        dueTextField.getStyleClass.add("due-status-far-away")
+        doneCheckBox.getStyleClass.add("done-check-status-far-away")
+      }
+      case "almost" => {
+        dueTextField.getStyleClass.add("due-status-nearly")
+        doneCheckBox.getStyleClass.add("done-check-status-almost")
+      }
+      case "due" => {
+        dueTextField.getStyleClass.add("due-status-already")
+        doneCheckBox.getStyleClass.add("done-check-status-due")
+      }
+      case "done" => {
+        dueTextField.getStyleClass.add("due-status-far-away")
+        doneCheckBox.getStyleClass.add("done-check-status-done")
+      }
+    }
+  }
+}
+
+
+object NextsTreeView {
+  def create(rootItem: TreeItem[ObservableAction]) = {
+    val treeView = new TreeView[ObservableAction](rootItem)
+    treeView.showRoot = false
+    treeView.id = "nexts-treeview"
+    treeView.cellFactory = NextsViewTreeCellFactory.create
+    treeView.onKeyPressed = (ke) => {
+      if (ke.getCode.delegate == KeyCode.Space.delegate) {
+        val selectionModel = treeView.selectionModel.value
+        val selectedItem = selectionModel.getSelectedItem
+        if (selectedItem != null) {
+          val observableAction = selectedItem.getValue
+          observableAction.action.actionSet.eventModifyActionDone(observableAction.action.id, !observableAction.isDone.value)
+        }
+        ke.consume
+      }
+    }
+    treeView
+  }
+}
+
+object NextsViewTreeCellFactory {
+  def create: TreeView[ObservableAction] => TreeCell[ObservableAction] = {
+    (treeView) => {
+      new javafx.scene.control.TreeCell[ObservableAction] {
+        getStyleClass.add("nexts-view-tree-cell")
+        var bindedItem: ObservableAction = null
+        val treeCell = new NextsViewTreeCellGraphic(treeView)
+
+        override def updateItem(item: ObservableAction, empty: Boolean): Unit = {
+          super.updateItem(item, empty)
+          if (bindedItem != null) treeCell.unbind
+          if (empty) {
+            bindedItem = null
+            setGraphic(null)
+          } else {
+            treeCell.bind(item)
+            setGraphic(treeCell)
+          }
+        }
+      }
+    }
+  }
+}
+
+class NextsViewTreeCellGraphic(treeView: TreeView[ObservableAction]) extends AnchorPane {
+  styleClass.add("nexts-view-tree-cell-graphic")
+  var bindedObservableAction: ObservableAction = null
+  prefWidth = 100
+  prefHeight = 46
+
+  val titleTextField = new TextField
+  val projectLabel = new Label
+  val contextTextField = new ComboBox[String](Seq("Lab", "Office", "Waiting", "People", "None"))
+  val priorityTextField = new ComboBox[String](Seq("Emergency", "Immediate", "Normal", "Opportunity"))
+  val dueTextField = new TextField
+  val doneCheckBox = new Button
+  doneCheckBox.focusTraversable = false
+  val splitLine = new AnchorPane
+  titleTextField.mouseTransparent = true
+  contextTextField.mouseTransparent = true
+  priorityTextField.mouseTransparent = true
+  dueTextField.mouseTransparent = true
+  priorityTextField.editable = false
+  val titleValueBuffer = new StringProperty
+  val contextValueBuffer = new StringProperty
+  val priorityValueBuffer = new StringProperty
+  val dueValueBuffer = new ObjectProperty[LocalDateTime]
+  val doneValueBuffer = new BooleanProperty
+  val projectValueBuffer = new StringProperty
+  titleValueBuffer.onChange((a, b, c) => titleTextField.text.value = c)
+  contextValueBuffer.onChange((a, b, c) => contextTextField.value.value = c)
+  priorityValueBuffer.onChange((a, b, c) => priorityTextField.selectionModel.value.select(c))
+  dueValueBuffer.onChange((a, b, c) => updateDueTextField)
+  DueUpdateRequest.addChangeListener(() => updateDueTextField)
+  doneValueBuffer.onChange((a, b, c) => updateDueTextField)
+  projectValueBuffer.onChange((a, b, c) => projectLabel.text = c)
+  titleTextField.getStyleClass.add("project-action-view-tree-cell-graphic-title-text-field")
+  contextTextField.getStyleClass.add("project-action-view-tree-cell-graphic-context-text-field")
+  priorityTextField.getStyleClass.add("project-action-view-tree-cell-graphic-priority-text-field")
+  dueTextField.getStyleClass.add("project-action-view-tree-cell-graphic-due-text-field")
+  splitLine.getStyleClass.add("project-action-view-tree-cell-graphic-split-line")
+  doneCheckBox.getStyleClass.add("project-action-view-tree-cell-graphic-done-checkbox")
+  projectLabel.getStyleClass.add("project-action-view-tree-cell-graphic-project-label")
+
+  titleTextField.onKeyTyped = (ke) => if (ke.getCharacter == "\r") tryExitEditingMode
+  contextTextField.onKeyTyped = (ke) => if (ke.getCharacter == "\r") tryExitEditingMode
+  priorityTextField.onKeyTyped = (ke) => if (ke.getCharacter == "\r") tryExitEditingMode
+  dueTextField.onKeyTyped = (ke) => if (ke.getCharacter == "\r") tryExitDueEditingMode
+  titleTextField.focused.onChange((a, b, c) => if (!c) tryExitEditingMode)
+  contextTextField.focused.onChange((a, b, c) => if (!c) tryExitEditingMode)
+  priorityTextField.focused.onChange((a, b, c) => if (!c) tryExitEditingMode)
+  dueTextField.focused.onChange((a, b, c) => if (!c) tryExitDueEditingMode)
+
+  titleTextField.prefHeight = 30
+  contextTextField.prefHeight = 15
+  contextTextField.prefWidth = 100
+  priorityTextField.prefHeight = 15
+  priorityTextField.prefWidth = 150
+  dueTextField.prefHeight = 15
+  dueTextField.prefWidth = 150
+  splitLine.prefHeight = 1
+  doneCheckBox.prefWidth = 32
+  doneCheckBox.prefHeight = 32
+  projectLabel.prefWidth = 100
+  AnchorPane.setTopAnchor(titleTextField, 0)
+  AnchorPane.setLeftAnchor(titleTextField, 0)
+  AnchorPane.setRightAnchor(titleTextField, 50)
+  AnchorPane.setTopAnchor(contextTextField, 30)
+  AnchorPane.setLeftAnchor(contextTextField, 100)
+  AnchorPane.setTopAnchor(priorityTextField, 30)
+  AnchorPane.setLeftAnchor(priorityTextField, 200)
+  AnchorPane.setTopAnchor(dueTextField, 30)
+  AnchorPane.setRightAnchor(dueTextField, 40)
+  AnchorPane.setBottomAnchor(splitLine, 0)
+  AnchorPane.setLeftAnchor(splitLine, 50)
+  AnchorPane.setRightAnchor(splitLine, 50)
+  AnchorPane.setTopAnchor(doneCheckBox, 7)
+  AnchorPane.setRightAnchor(doneCheckBox, 7)
+  AnchorPane.setTopAnchor(projectLabel, 30)
+  AnchorPane.setLeftAnchor(projectLabel, 0)
+  children = Seq(titleTextField, contextTextField, priorityTextField, dueTextField, splitLine, doneCheckBox, projectLabel)
+
+  var editingMode = false
+  val selectionModel = treeView.selectionModel.value
+  selectionModel.selectedItemProperty.onChange((a, b, c) => if (c != null) {
+    titleTextField.mouseTransparent = c.getValue != bindedObservableAction
+    contextTextField.mouseTransparent = c.getValue != bindedObservableAction
+    priorityTextField.mouseTransparent = c.getValue != bindedObservableAction
+    dueTextField.mouseTransparent = c.getValue != bindedObservableAction
+    tryExitEditingMode
+  })
+
+  def bind(observableAction: ObservableAction) = {
+    bindedObservableAction = observableAction
+    titleValueBuffer <== observableAction.title
+    contextValueBuffer <== observableAction.context
+    priorityValueBuffer <== observableAction.priority
+    dueValueBuffer <== observableAction.due
+    doneValueBuffer <== observableAction.isDone
+    projectValueBuffer.value = observableAction.action.actionSet.getAction(observableAction.action.projectID).getTitle
+  }
+
+  def unbind = {
+    titleValueBuffer.unbind(bindedObservableAction.title)
+    contextValueBuffer.unbind(bindedObservableAction.context)
+    priorityValueBuffer.unbind(bindedObservableAction.priority)
+    dueValueBuffer.unbind(bindedObservableAction.due)
+    doneValueBuffer.unbind(bindedObservableAction.isDone)
+    projectValueBuffer.value = ""
+    bindedObservableAction = null
+  }
+
+  titleTextField.onMouseClicked = (me) => {
+    if (me.getButton == MouseButton.Primary.delegate) {
+      editingMode = true
+    }
+  }
+  contextTextField.onMouseClicked = (me) => {
+    if (me.getButton == MouseButton.Primary.delegate) {
+      editingMode = true
+    }
+  }
+  priorityTextField.onMouseClicked = (me) => {
+    if (me.getButton == MouseButton.Primary.delegate) {
+      editingMode = true
+    }
+  }
+  dueTextField.onMouseClicked = (me) => {
+    if (me.getButton == MouseButton.Primary.delegate) {
+      editingMode = true
+      dueTextField.editable = true
     }
   }
   dueTextField.focused.onChange((a, b, c) => if (c) {
     editingMode = true
     dueTextField.editable = true
   })
-  doneCheckBox.selected.onChange((a, b, c) => if (bindedObservableAction != null) {
+  doneCheckBox.onAction = (a) => if (bindedObservableAction != null) {
     val modifiedAction = bindedObservableAction.action
-    modifiedAction.actionSet.eventModifyActionDone(modifiedAction.id, c)
-  })
+    modifiedAction.actionSet.eventModifyActionDone(modifiedAction.id, !modifiedAction.getIsDone)
+  }
 
 
   def tryExitEditingMode = if (editingMode) {
@@ -558,14 +822,37 @@ class ProjectActionViewTreeCellGraphic(treeView: TreeView[ObservableAction]) ext
       case d if d <= -3600 * 24 * 365 * 10 => s""
       case _ => DATE_FORMATTER.format(due)
     }
-    val dueStatus = delta match {
+    val dueStatus = if (bindedObservableAction.isDone.value) "done" else delta match {
       case d if d > 3600 * 24 => "far-away"
-      case d if d > 0 => "nearly"
-      case d if d < 0 => "already"
+      case d if d > 0 => "almost"
+      case d if d <= -3600 * 24 * 365 * 10 => "far-away"
+      case _ => "due"
     }
     dueTextField.text = displayString
+    setDueStatus(dueStatus)
+  }
+
+  private def setDueStatus(status: String) = {
     dueTextField.getStyleClass.removeAll("due-status-far-away", "due-status-nearly", "due-status-already")
-    dueTextField.getStyleClass.add("due-status-" + dueStatus)
+    doneCheckBox.getStyleClass.removeAll("done-check-status-far-away", "done-check-status-almost", "done-check-status-due", "done-check-status-done")
+    status match {
+      case "far-away" => {
+        dueTextField.getStyleClass.add("due-status-far-away")
+        doneCheckBox.getStyleClass.add("done-check-status-far-away")
+      }
+      case "almost" => {
+        dueTextField.getStyleClass.add("due-status-nearly")
+        doneCheckBox.getStyleClass.add("done-check-status-almost")
+      }
+      case "due" => {
+        dueTextField.getStyleClass.add("due-status-already")
+        doneCheckBox.getStyleClass.add("done-check-status-due")
+      }
+      case "done" => {
+        dueTextField.getStyleClass.add("due-status-far-away")
+        doneCheckBox.getStyleClass.add("done-check-status-done")
+      }
+    }
   }
 }
 
@@ -579,5 +866,4 @@ object DueUpdateRequest {
   def addChangeListener(listener: () => Unit) = {
     listeners += listener
   }
-
 }
